@@ -1,0 +1,223 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 39cc630e39f241deacd1579c72aa882f
+      template: 'Zabbix Server Housekeeper Stats by Zabbix Agent Active'
+      name: 'Zabbix Server Housekeeper Stats by Zabbix Agent Active'
+      description: |
+        Zabbix Server Housekeeper statistics for Zabbix 7.0+
+        
+        Based on original work by diasdm
+        Original source: https://github.com/diasdmhub/Zabbix_Out_of_The_Box/
+        
+        Modifications:
+        - Adapted for Zabbix 7.0 compatibility (from Zabbix 7.2)
+        - Removed dashboard section for compatibility
+        
+        Original work copyright (C) diasdm
+        Modifications copyright (C) N1k0droid 2025
+        Licensed under GPL v3
+      vendor:
+        name: N1k0droid
+        version: 7.0-1
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 6afdec0122f844d79549d8995399b73e
+          name: 'Housekeeper Log Statistics'
+          type: ZABBIX_ACTIVE
+          key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          delay: 10m
+          history: '0'
+          value_type: LOG
+          description: 'Master item that collects housekeeper log messages'
+          logtimefmt: 'pppppp:yyyyMMdd:hhmmss.nnn'
+          tags:
+            - tag: Log
+              value: Housekeeper
+        - uuid: 687ca83601274c9283136cd23c1c3563
+          name: 'Alarm Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[alarms]'
+          history: 30d
+          description: 'Number of alarm records deleted on the last run of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) alarms,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Alarms
+        - uuid: d61326af25fb4ed7b44c29dd575d591d
+          name: 'Audit Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[audit]'
+          history: 30d
+          description: 'Number of audit records deleted on the last run of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) audit,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Audit
+        - uuid: 07f8766567cc49e7936fdbeaf5d64cf6
+          name: 'Autoregistration Host Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[autoreg_host]'
+          history: 30d
+          description: 'Number of autoregistration host records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) autoreg_host,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Autoreg_host
+        - uuid: aa0693fbb2e546beb0e48d50e5e182f0
+          name: 'Event Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[events]'
+          history: 30d
+          description: 'Number of event records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) events,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Events
+        - uuid: c812f043a9e54e58824b8cb3dc60ba9f
+          name: 'History and Trend Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[history]'
+          history: 30d
+          description: 'Number of history and trend records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) hist/trends,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: History
+            - tag: Housekeeper
+              value: Trends
+        - uuid: 64dc9eb5f6f041258df975e1dd250166
+          name: 'Item and Trigger Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[items]'
+          history: 30d
+          description: 'Number of item and trigger records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) items/triggers,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Items
+            - tag: Housekeeper
+              value: Triggers
+        - uuid: fa667d99798347429d0cb9d263d9c5d6
+          name: 'Problem Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[problems]'
+          history: 30d
+          description: 'Number of problem records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) problems,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Problems
+        - uuid: df5b53ec968c49b5b3e80ff173b78e3c
+          name: 'Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[records]'
+          history: 30d
+          description: 'Number of records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) records in'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Records
+        - uuid: 8efd26c10a8f41d7b3e1a2b14f5de4fd
+          name: 'Session Records Deleted'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.del[sessions]'
+          history: 30d
+          description: 'Number of session records deleted on the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - '(\d+) sessions,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Sessions
+        - uuid: d3b5d96d538c45bd813f01ed9297ed81
+          name: 'Execution Time'
+          type: DEPENDENT
+          key: 'zabbix.housekeeper.exec[time]'
+          history: 30d
+          value_type: FLOAT
+          units: s
+          description: 'Execution time of the last execution of the Zabbix Housekeeper process'
+          preprocessing:
+            - type: REGEX
+              parameters:
+                - 'in (\d+.\d+) sec,'
+                - \1
+          master_item:
+            key: 'log["/var/log/zabbix/zabbix_server.log","housekeeper\s\[(.*)\]$",,,skip,"\1"]'
+          tags:
+            - tag: Housekeeper
+              value: Time
+          triggers:
+            - uuid: 8042276c7b764d5e9d68ba4e53b68146
+              expression: 'trendavg(/Zabbix Server Housekeeper Stats by Zabbix Agent Active/zabbix.housekeeper.exec[time],24h:now/h)>{$HOUSEKEEPER.TIME.WARN}'
+              name: 'Housekeeper execution time is High'
+              opdata: 'Last execution time: {ITEM.LASTVALUE}'
+              priority: WARNING
+              description: 'Zabbix Housekeeper average execution time for the last 24h is higher than the configured warning limit'
+              tags:
+                - tag: Time
+                  value: high
+      tags:
+        - tag: Zabbix
+          value: housekeeper
+      macros:
+        - macro: '{$HOUSEKEEPER.TIME.WARN}'
+          value: '60'
+          description: 'Time limit in seconds for Housekeeper execution time warning'
