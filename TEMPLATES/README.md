@@ -9,4 +9,5 @@ Each template includes:
 
 ## Structure
 
-- `DB` - This folder is dedicated to the collection of templates for database monitoring
+- `DB` - Collection of templates for database monitoring
+- `Housekeeping` - Collection of templates for Housekeeping service monitoring
