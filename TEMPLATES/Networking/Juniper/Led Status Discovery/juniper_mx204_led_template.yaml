@@ -1,0 +1,132 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: 'Templates/Network Devices'
+  templates:
+    - uuid: 49b694dad34c48278a426ecd6f629e85
+      template: 'Juniper MX204 LED Status Discovery'
+      name: 'Juniper MX204 LED Status Discovery'
+      description: 'Template for discovering and monitoring Juniper MX204 LED table via SNMP'
+      vendor:
+        name: N1k0droid
+        version: 7.0-1
+      groups:
+        - name: 'Templates/Network Devices'
+      items: []
+      discovery_rules:
+        - uuid: f8a2c9d1e3b54f4aa6c8d0e2f4a6b8d0
+          name: 'LED Table Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#LED_DESCR},1.3.6.1.4.1.2636.3.1.10.1.7.3]'
+          key: juniper.led.discovery
+          delay: 1h
+          lifetime: 7d
+          description: 'Discovery of jnxLEDTable entries'
+          item_prototypes:
+            - uuid: a1b3c5d7e9f14a3ba5c7d9e1f3a5b7c9
+              name: '{#LED_DESCR}: LED State'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.1.10.1.8.3.{#SNMPINDEX}'
+              key: 'juniper.led.state[{#SNMPINDEX}]'
+              delay: 60s
+              history: 7d
+              value_type: FLOAT
+              description: |
+                MIB: JUNIPER-MIB
+                jnxLEDState values:
+                0 = off
+                1 = on (green)
+                2 = blinking (amber)
+                3 = on and blinking
+              tags:
+                - tag: component
+                  value: led
+                - tag: description
+                  value: '{#LED_DESCR}'
+            - uuid: b2c4d6e8f0a24b4ca6d8e0f2a4b6c8d0
+              name: '{#LED_DESCR}: LED State Ordered'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.1.10.1.9.3.{#SNMPINDEX}'
+              key: 'juniper.led.state_ordered[{#SNMPINDEX}]'
+              delay: 60s
+              history: 7d
+              value_type: FLOAT
+              description: |
+                MIB: JUNIPER-MIB
+                jnxLEDStateOrdered (standardized severity):
+                1 = unknown
+                2 = ok (green)
+                3 = minor (amber)
+                4 = major (red)
+                5 = critical
+                6 = offline
+              tags:
+                - tag: component
+                  value: led
+                - tag: description
+                  value: '{#LED_DESCR}'
+            - uuid: c3d5e7f9a1b34c5da7e9f1a3b5c7d9e1
+              name: '{#LED_DESCR}: LED Originator'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.2636.3.1.10.1.6.3.{#SNMPINDEX}'
+              key: 'juniper.led.originator[{#SNMPINDEX}]'
+              delay: 1h
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              description: 'MIB: JUNIPER-MIB - jnxLEDOriginator (OID type)'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              tags:
+                - tag: component
+                  value: led
+                - tag: description
+                  value: '{#LED_DESCR}'
+          trigger_prototypes:
+            - uuid: d4e6f8a0b2c44d6ea8f0a2b4c6d8e0f2
+              expression: 'last(/Juniper MX204 LED Status Discovery/juniper.led.state_ordered[{#SNMPINDEX}])=3'
+              name: '{#LED_DESCR}: LED State WARNING (Amber)'
+              priority: AVERAGE
+              description: |
+                LED is in WARNING/MINOR state (amber):
+                Component: {#LED_DESCR}
+                This indicates a component warning or non-critical issue.
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: e5f7a9b1c3d54e7fa9b1c3d5e7f9a1b3
+              expression: 'last(/Juniper MX204 LED Status Discovery/juniper.led.state_ordered[{#SNMPINDEX}])>=4'
+              name: '{#LED_DESCR}: LED State CRITICAL (Red)'
+              priority: HIGH
+              description: |
+                LED is in CRITICAL state (red):
+                Component: {#LED_DESCR}
+                This indicates a critical component failure or offline status.
+                Immediate investigation required!
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: f6a8b0c2d4e64f8aa0b2c4d6e8f0a2b4
+              expression: 'last(/Juniper MX204 LED Status Discovery/juniper.led.state_ordered[{#SNMPINDEX}])=1'
+              name: '{#LED_DESCR}: LED State UNKNOWN'
+              priority: INFO
+              description: 'LED state is UNKNOWN. May indicate a sensor issue.'
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: a7b9c1d3e5f74a9ba1c3d5e7f9a1b3c5
+              expression: 'last(/Juniper MX204 LED Status Discovery/juniper.led.originator[{#SNMPINDEX}])="SNMPv2-SMI::zeroDotZero" and last(/Juniper MX204 LED Status Discovery/juniper.led.state_ordered[{#SNMPINDEX}])>=3'
+              name: '{#LED_DESCR}: CRITICAL - Main Chassis Alarm LED'
+              priority: HIGH
+              description: |
+                CRITICAL ALERT: The main Chassis Alarm LED is active!
+                Component: {#LED_DESCR}
+                
+                This is the system master alarm indicator (Originator = 0.0).
+                Check 'show chassis alarms' on CLI for details.
+              tags:
+                - tag: scope
+                  value: availability
