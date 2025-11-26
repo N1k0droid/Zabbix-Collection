@@ -8,26 +8,12 @@ This Zabbix 7.0 template provides comprehensive LED monitoring for Juniper MX204
 
 Official Zabbix templates do not include MX204 LED monitoring. Additionally, Juniper MX204 lacks the standard "snmp system status alarm" metrics available in other Juniper router families (see [Juniper Support Portal](https://supportportal.juniper.net/s/article/SNMP-is-not-pulling-data-for-the-Chassis-Alarm-on-MX204)). This template fills that gap by monitoring all LED indicators directly from the `jnxLEDTable`, enabling proactive hardware health tracking and master alarm detection.
 
-## Known Limitations
-
-### Chassis Alarm LED Special Handling
-Due to the non-standard OID structure of the Chassis Alarm LED in jnxLEDTable, this template uses **dedicated static items** for monitoring:
-- Chassis Alarm LED: LED State (status)
-- Chassis Alarm LED: LED State Ordered (severity)  
-- Chassis Alarm LED: LED Originator (owner)
-
-Unlike other discovered LEDs, these items use 4-level OIDs (e.g., `1.3.6.1.4.1.2636.3.1.10.1.8.3.1.0.0`) instead of the standard 5-level pattern. This ensures reliable monitoring of the system master alarm indicator without discovery rule interference.
-
-### OID Index Differences
-- **Standard LEDs**: Use `{#SNMPINDEX}` for table indexing (e.g., `...3.{#SNMPINDEX}`)
-- **Chassis Alarm LED**: Uses fixed OID `...3.1.0.0` due to different internal table structure
-
 ### What It Does
 
-- **Automatic Discovery** – Discovers all LEDs on the MX204 (chassis alarm, PSU, fans, FPC, etc.)
-- **Real-time Monitoring** – Collects LED state, severity, and component origin via SNMP
-- **Intelligent Alerting** – Generates WARNING/CRITICAL/UNKNOWN triggers based on LED severity
-- **Chassis Alarm Detection** – Special trigger for the master system alarm LED
+- **Automatic Discovery** – Discovers all standard LEDs on the MX204 (PSU, fans, FPC, etc.)
+- **Real-time Monitoring** – Collects LED state and severity via SNMP
+- **Intelligent Alerting** – Generates WARNING/MAJOR/CRITICAL/UNKNOWN triggers based on LED severity
+- **Chassis Alarm Monitoring** – Special static items for the master system alarm LED
 
 ---
 
@@ -50,12 +36,10 @@ For each discovered LED, the template collects:
 |------|-----|----------|-------------|
 | **LED State (status)** | 1.3.6.1.4.1.2636.3.1.10.1.8 | 60s | Physical LED state (off/green/amber/blinking) |
 | **LED State Ordered (severity)** | 1.3.6.1.4.1.2636.3.1.10.1.9 | 60s | Standardized severity (1=unknown, 2=ok, 3=warning, 4=major, 5=critical, 6=offline) |
-| **LED Originator (owner)** | 1.3.6.1.4.1.2636.3.1.10.1.6 | 1h | Hardware component controlling the LED (chassis/PSU/fan/etc) |
 
 ### Expected Discovered LEDs
 
 ```
-- chassis alarm LED
 - PEM 0 LED
 - PEM 1 LED
 - FAN 0 LED
@@ -74,10 +58,32 @@ The template generates 4 triggers per LED:
 
 | Trigger | Condition | Priority |
 |---------|-----------|----------|
-| LED State WARNING (Amber) | Severity = 3 | AVERAGE |
-| LED State CRITICAL (Red) | Severity ≥ 4 | HIGH |
+| LED State WARNING (Amber) | Severity = 3 | WARNING |
+| LED State MAJOR (Red) | Severity = 4 | HIGH |
+| LED State CRITICAL (Red) | Severity = 5 | DISASTER |
 | LED State UNKNOWN | Severity = 1 | INFO |
-| **CRITICAL - Main Chassis Alarm LED** | Origin = 0.0 AND Severity ≥ 3 | HIGH |
+
+---
+
+## Known Limitations
+
+### Chassis Alarm LED Special Handling
+
+The Chassis Alarm LED uses a **non-standard OID structure** that requires special handling:
+
+**Problem:** Standard SNMP GET on `1.3.6.1.4.1.2636.3.1.10.1.8.3.1.0.0` returns "No Such Instance"
+
+**Solution:** Use `walk[OID]` with REGEX preprocessing to extract the value
+
+**Implementation:**
+- **Static Items**: Use `walk[1.3.6.1.4.1.2636.3.1.10.1.8.3.1.0.0]` instead of direct OID
+- **Preprocessing**: REGEX extracts the INTEGER/OID value from walk output
+- **Discovery Filter**: Excludes "chassis alarm" pattern to prevent conflicts
+
+Unlike other discovered LEDs, the Chassis Alarm LED items:
+- Cannot use standard SNMP GET (only GETNEXT works)
+- Are defined as static items, not discovered dynamically
+- Use `walk[OID]` with preprocessing instead of direct OID queries
 
 ---
 
