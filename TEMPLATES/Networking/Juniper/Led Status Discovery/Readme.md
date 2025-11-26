@@ -8,6 +8,20 @@ This Zabbix 7.0 template provides comprehensive LED monitoring for Juniper MX204
 
 Official Zabbix templates do not include MX204 LED monitoring. Additionally, Juniper MX204 lacks the standard "snmp system status alarm" metrics available in other Juniper router families (see [Juniper Support Portal](https://supportportal.juniper.net/s/article/SNMP-is-not-pulling-data-for-the-Chassis-Alarm-on-MX204)). This template fills that gap by monitoring all LED indicators directly from the `jnxLEDTable`, enabling proactive hardware health tracking and master alarm detection.
 
+## Known Limitations
+
+### Chassis Alarm LED Special Handling
+Due to the non-standard OID structure of the Chassis Alarm LED in jnxLEDTable, this template uses **dedicated static items** for monitoring:
+- Chassis Alarm LED: LED State (status)
+- Chassis Alarm LED: LED State Ordered (severity)  
+- Chassis Alarm LED: LED Originator (owner)
+
+Unlike other discovered LEDs, these items use 4-level OIDs (e.g., `1.3.6.1.4.1.2636.3.1.10.1.8.3.1.0.0`) instead of the standard 5-level pattern. This ensures reliable monitoring of the system master alarm indicator without discovery rule interference.
+
+### OID Index Differences
+- **Standard LEDs**: Use `{#SNMPINDEX}` for table indexing (e.g., `...3.{#SNMPINDEX}`)
+- **Chassis Alarm LED**: Uses fixed OID `...3.1.0.0` due to different internal table structure
+
 ### What It Does
 
 - **Automatic Discovery** – Discovers all LEDs on the MX204 (chassis alarm, PSU, fans, FPC, etc.)
