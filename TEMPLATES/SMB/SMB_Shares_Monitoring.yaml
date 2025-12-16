@@ -1,0 +1,102 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 8f5174df50e74a9787515c0142b1325c
+      name: Templates/Storage
+  templates:
+    - uuid: 83c92cc277c441b3ab390a3e2093df45
+      template: 'SMB Shares Monitoring'
+      name: 'SMB Shares Monitoring'
+      description: |
+        Template for discovering and monitoring SMB Shares space.
+        
+        Populate the following macros:
+        
+        {$SMB.USER}
+        {$SMB.PASSWORD}
+        {$SMB.SHARES.LIST}
+        {$SMB.USER}
+      vendor:
+        name: N1k0droid
+        version: 1.0-0
+      groups:
+        - name: Templates/Storage
+      discovery_rules:
+        - uuid: 0809017e7df94acb85e242a7071e6071
+          name: 'SMB Shares Discovery'
+          type: EXTERNAL
+          key: 'discover_smb_shares.sh[{$SMB.SHARES.LIST}]'
+          delay: 1h
+          item_prototypes:
+            - uuid: fc62dfee622b4307a0597f10f82e9228
+              name: 'SMB [{#SMB_SHARE_NAME}]: Free'
+              type: EXTERNAL
+              key: 'check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},free]'
+              delay: 10m
+              units: B
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+            - uuid: e7b62531ddbb4da68645bd89b4fe503c
+              name: 'SMB [{#SMB_SHARE_NAME}]: Free %'
+              type: EXTERNAL
+              key: 'check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},pfree]'
+              delay: 10m
+              value_type: FLOAT
+              units: '%'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+            - uuid: 49d9c64762ab4f918327d4c71a98f170
+              name: 'SMB [{#SMB_SHARE_NAME}]: Used %'
+              type: EXTERNAL
+              key: 'check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},pused]'
+              delay: 10m
+              value_type: FLOAT
+              units: '%'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              trigger_prototypes:
+                - uuid: 47762a3fbfcc4379bc57bfcbbced76ac
+                  expression: 'last(/SMB Shares Monitoring/check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},pused])>90'
+                  name: 'SMB [{#SMB_SHARE_NAME}]: Critical usage (>90%)'
+                  priority: DISASTER
+                - uuid: e59a08fef3b04649b7db527385292e24
+                  expression: 'last(/SMB Shares Monitoring/check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},pused])>80'
+                  name: 'SMB [{#SMB_SHARE_NAME}]: High usage (>80%)'
+                  priority: AVERAGE
+                - uuid: 6cf0447657034c10857b1e18b4becd05
+                  expression: 'last(/SMB Shares Monitoring/check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},pused])>85'
+                  name: 'SMB [{#SMB_SHARE_NAME}]: Very high usage (>85%)'
+                  priority: HIGH
+            - uuid: bb6276c1e0da4190a1013b5716702882
+              name: 'SMB [{#SMB_SHARE_NAME}]: Total'
+              type: EXTERNAL
+              key: 'check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},total]'
+              delay: 1h
+              units: B
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+            - uuid: 9424ff6789534233aa4771ea17e07573
+              name: 'SMB [{#SMB_SHARE_NAME}]: Used'
+              type: EXTERNAL
+              key: 'check_smb_folder_size-v2.sh[{#SMB_SHARE},{$SMB.USER},{$SMB.PASSWORD},{$SMB.DOMAIN},used]'
+              delay: 10m
+              units: B
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+      macros:
+        - macro: '{$SMB.DOMAIN}'
+        - macro: '{$SMB.PASSWORD}'
+          type: SECRET_TEXT
+        - macro: '{$SMB.SHARES.LIST}'
+          description: 'smb shares list ( separe with comma)'
+        - macro: '{$SMB.USER}'
