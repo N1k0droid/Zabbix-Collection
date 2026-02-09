@@ -122,7 +122,7 @@ Go to **Configuration → Actions → Internal actions → Create action**
 
 #### Import Template
 
-Go to **Configuration → Templates → Import** and upload `template.yaml`:
+Go to **Configuration → Templates → Import** and upload `zbx_unsupported_monitor_xx.yaml`:
 
 
 Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server** host.
