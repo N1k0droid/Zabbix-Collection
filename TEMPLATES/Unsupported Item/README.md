@@ -45,7 +45,7 @@ sudo chmod 755 /var/lib/zabbix/unsupported-items/logs
 #### Deploy the script
 ```bash
 sudo wget -O /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh \
-  https://raw.githubusercontent.com/N1k0droid/zabbix-unsupported-items-monitor/main/zbx_unsupported_monitor.sh
+  https://raw.githubusercontent.com/N1k0droid/zabbix-unsupported-items-monitor/main/TEMPLATES/Unsupported%20Item/zbx_unsupported_monitor.sh
 
 sudo chmod 755 /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 sudo chown zabbix:zabbix /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
