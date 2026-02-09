@@ -124,9 +124,6 @@ Go to **Configuration → Actions → Internal actions → Create action**
 
 Go to **Configuration → Templates → Import** and upload `template.yaml`:
 
-```bash
-curl -O https://raw.githubusercontent.com/N1k0droid/zabbix-unsupported-items-monitor/main/template.yaml
-```
 
 Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server** host.
 
