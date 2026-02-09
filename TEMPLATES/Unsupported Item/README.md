@@ -140,13 +140,13 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
                        │
                        ▼
         ┌──────────────────────────────┐
-        │ Internal Action Triggers      │
+        │ Internal Action Triggers     │
         │ (Step 1: 24h, 2: 7d, 3: 30d) │
         └──────────────┬───────────────┘
                        │
                        ▼
         ┌──────────────────────────────────────┐
-        │ Media Type calls script:              │
+        │ Media Type calls script:             │
         │ zbx_unsupported_monitor.sh           │
         │ with parameters (HOST, ITEM, etc)    │
         └──────────────┬───────────────────────┘
@@ -169,12 +169,12 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         │ sender                              │
         │ ├─ count (integer)                  │
         │ ├─ log (text)                       │
-        │ └─ For each: 24h, 7d, 30d          │
+        │ └─ For each: 24h, 7d, 30d           │
         └──────────────┬──────────────────────┘
                        │
-        ┌──────────────▼────────────────────────┐
-        │ ZABBIX SERVER: Receives metrics       │
-        │ Items updated:                        │
+        ┌──────────────▼──────────────────────┐
+        │ ZABBIX SERVER: Receives metrics     │
+        │ Items updated:                      │
         │ ├─ zabbix.unsupported.24h[count]    │
         │ ├─ zabbix.unsupported.24h[log]      │
         │ ├─ zabbix.unsupported.7d[count]     │
@@ -184,12 +184,12 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         └──────────────┬──────────────────────┘
                        │
         ┌──────────────▼──────────────────────┐
-        │ Triggers evaluate:                   │
+        │ Triggers evaluate:                  │
         │ ├─ Count threshold checks           │
         │ ├─ Delta detection (new items)      │
         │ ├─ Nodata checks                    │
         │ └─ Dependencies resolve             │
-        └──────────────────────────────────────┘
+        └─────────────────────────────────────┘
 ```
 
 ### File Structure
