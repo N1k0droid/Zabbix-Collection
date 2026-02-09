@@ -570,7 +570,7 @@ Log entries are reformatted for readability before sending to Zabbix:
 
 ## 📄 License
 
-MIT License © 2026 N1k0droid
+MIT License © 2026 Nicola Gurgone (@N1k0droid)
 
 See [LICENSE](LICENSE) for details.
 
