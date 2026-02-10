@@ -96,7 +96,7 @@ normalize_state() {
 event_datetime_or_now() {
   local t="$1"
   local d="$2"
-  if [ -n "$t" ] && [ -n "$d" ] && [[ "$t" != \{* ]] && [[ "$d" != \{* ]]; then
+  if [ -n "$t" ] && [ -n "$d" ] && [[ "$t" != \\{* ]] && [[ "$d" != \\{* ]]; then
     echo "$d $t"
     return 0
   fi
@@ -144,7 +144,7 @@ find_entry_category() {
   local key="$2"
   local cat
 
-  for cat in 30d 7d 24h; do
+  for cat in step3 step2 step1; do
     local f="${LOG_DIR}/unsupported_${cat}.txt"
     [ -f "$f" ] || continue
     if awk -F'|' -v h="$host" -v k="$key" '
@@ -179,18 +179,18 @@ process_event_locked() {
   local unique_key="${HOST_NAME}|${ITEM_KEY}"
   local entry="${dt}|${HOST_NAME}|${ITEM_NAME}|${ITEM_KEY}|${state}"
 
-  local f24="${LOG_DIR}/unsupported_24h.txt"
-  local f7="${LOG_DIR}/unsupported_7d.txt"
-  local f30="${LOG_DIR}/unsupported_30d.txt"
+  local f1="${LOG_DIR}/unsupported_step1.txt"
+  local f2="${LOG_DIR}/unsupported_step2.txt"
+  local f3="${LOG_DIR}/unsupported_step3.txt"
 
-  ensure_file "$f24" || return 1
-  ensure_file "$f7" || return 1
-  ensure_file "$f30" || return 1
+  ensure_file "$f1" || return 1
+  ensure_file "$f2" || return 1
+  ensure_file "$f3" || return 1
 
   if [ "$state" = "Normal" ]; then
-    remove_entry_from_file "$f24" "$HOST_NAME" "$ITEM_KEY" || return 1
-    remove_entry_from_file "$f7" "$HOST_NAME" "$ITEM_KEY" || return 1
-    remove_entry_from_file "$f30" "$HOST_NAME" "$ITEM_KEY" || return 1
+    remove_entry_from_file "$f1" "$HOST_NAME" "$ITEM_KEY" || return 1
+    remove_entry_from_file "$f2" "$HOST_NAME" "$ITEM_KEY" || return 1
+    remove_entry_from_file "$f3" "$HOST_NAME" "$ITEM_KEY" || return 1
     log_info "RESOLVED: $unique_key removed from all files"
     return 0
   fi
@@ -200,23 +200,23 @@ process_event_locked() {
     found="$(find_entry_category "$HOST_NAME" "$ITEM_KEY")"
 
     case "$found" in
-      "30d")
-        add_or_update_entry "$f30" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
-        log_info "UPDATED: $unique_key in 30d (timestamp refreshed)"
+      "step3")
+        add_or_update_entry "$f3" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
+        log_info "UPDATED: $unique_key in step3 (timestamp refreshed)"
         ;;
-      "7d")
-        remove_entry_from_file "$f7" "$HOST_NAME" "$ITEM_KEY" || return 1
-        add_or_update_entry "$f30" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
-        log_info "MOVED: $unique_key 7d -> 30d"
+      "step2")
+        remove_entry_from_file "$f2" "$HOST_NAME" "$ITEM_KEY" || return 1
+        add_or_update_entry "$f3" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
+        log_info "MOVED: $unique_key step2 -> step3"
         ;;
-      "24h")
-        remove_entry_from_file "$f24" "$HOST_NAME" "$ITEM_KEY" || return 1
-        add_or_update_entry "$f7" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
-        log_info "MOVED: $unique_key 24h -> 7d"
+      "step1")
+        remove_entry_from_file "$f1" "$HOST_NAME" "$ITEM_KEY" || return 1
+        add_or_update_entry "$f2" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
+        log_info "MOVED: $unique_key step1 -> step2"
         ;;
       *)
-        add_or_update_entry "$f24" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
-        log_info "NEW: $unique_key added to 24h"
+        add_or_update_entry "$f1" "$HOST_NAME" "$ITEM_KEY" "$entry" || return 1
+        log_info "NEW: $unique_key added to step1"
         ;;
     esac
 
@@ -263,7 +263,7 @@ process_category_for_send() {
   log_value="$(awk -F'|' '
       NF>=5 && $2!="" && $4!="" {
         count++
-        printf "%s - HOST: %s ITEM: %s KEY: %s STATE: %s\n", $1, $2, $3, $4, $5
+        printf "%s - HOST: %s ITEM: %s KEY: %s STATE: %s\\n", $1, $2, $3, $4, $5
       }
       END {
         if (count==0) {
@@ -278,7 +278,7 @@ process_category_for_send() {
     log_value="No unsupported items"
   else
     # Remove trailing newline (cosmetic) if present
-    log_value="${log_value%$'\n'}"
+    log_value="${log_value%$'\\n'}"
   fi
 
   send_metric "zabbix.unsupported.${category}[log]" "$log_value" || return 1
@@ -292,7 +292,7 @@ send_all_metrics() {
   validate_sender_prerequisites || return 1
 
   local rc=0
-  for category in 24h 7d 30d; do
+  for category in step1 step2 step3; do
     process_category_for_send "$category" || rc=1
   done
 
