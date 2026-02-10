@@ -1,6 +1,6 @@
 # Zabbix Unsupported Items Monitor
 
-[![Version](https://img.shields.io/badge/version-3.0.1-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
+[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
@@ -11,9 +11,9 @@ A comprehensive **Zabbix alerting and tracking solution** for unsupported items 
 
 This project provides a **complete solution** to monitor, track, and report on unsupported items in Zabbix through:
 
-- **Time-based categorization**: 24-hour, 7-day, and 30-day buckets
+- **Flexible time-based categorization**: Three configurable escalation steps (default: 1h, 24h, 7d)
 - **Persistent logging**: File-based state tracking via bash script
-- **Automated escalation**: Internal actions trigger at 24h, 7d, and 30d intervals
+- **Automated escalation**: Internal actions trigger at configurable intervals respecting Zabbix's 7-day action step limit
 - **Dashboard-ready metrics**: `zabbix_sender` integration for real-time reporting
 - **Text logs**: Detailed entries showing timestamp, host, item, and state
 - **Built-in triggers**: Pre-configured alerts for escalation thresholds
@@ -105,20 +105,22 @@ Go to **Configuration → Actions → Internal actions → Create action**
 
 **Operations:** Add operation for each escalation step:
 
-**Step 1 (Execute at 24h):**
+**Step 1 (Execute at 1h - configurable):**
 - Send to media type: `Script - Unsupported Items Monitor`
 - Send to users: (or user groups)
 - Custom message: `On`
 
-**Step 2 (Execute at 7 days):**
-- Same as Step 1, delay = `7d`
+**Step 2 (Execute at 24h - configurable):**
+- Same as Step 1, delay = `24h` (or your preferred interval)
 
-**Step 3 (Execute at 30 days):**
-- Same as Step 1, delay = `30d`
+**Step 3 (Execute at 7d - configurable, max 7d due to Zabbix limitation):**
+- Same as Step 1, delay = `7d` (or your preferred interval ≤ 7 days)
 
 **Recovery operations:**
 - Send to media type: `Script - Unsupported Items Monitor`
 - Same custom message settings
+
+> **Note:** Zabbix has a 7-day limit for action operation steps. Configure your timing intervals accordingly.
 
 #### Import Template
 
@@ -141,7 +143,8 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
                        ▼
         ┌──────────────────────────────┐
         │ Internal Action Triggers     │
-        │ (Step 1: 24h, 2: 7d, 3: 30d) │
+        │ (Step 1, Step 2, Step 3)     │
+        │ Configurable timing          │
         └──────────────┬───────────────┘
                        │
                        ▼
@@ -154,7 +157,7 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         ┌──────────────▼───────────────┐
         │ PHASE 1: Log & Categorize    │
         │ ├─ Read ITEM.STATE           │
-        │ ├─ Find entry in 24h/7d/30d  │
+        │ ├─ Find entry in step1/2/3   │
         │ ├─ Move or update file       │
         │ └─ Write syslog entry        │
         └──────────────┬───────────────┘
@@ -169,18 +172,18 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         │ sender                              │
         │ ├─ count (integer)                  │
         │ ├─ log (text)                       │
-        │ └─ For each: 24h, 7d, 30d           │
+        │ └─ For each: step1, step2, step3    │
         └──────────────┬──────────────────────┘
                        │
         ┌──────────────▼──────────────────────┐
         │ ZABBIX SERVER: Receives metrics     │
         │ Items updated:                      │
-        │ ├─ zabbix.unsupported.24h[count]    │
-        │ ├─ zabbix.unsupported.24h[log]      │
-        │ ├─ zabbix.unsupported.7d[count]     │
-        │ ├─ zabbix.unsupported.7d[log]       │
-        │ ├─ zabbix.unsupported.30d[count]    │
-        │ └─ zabbix.unsupported.30d[log]      │
+        │ ├─ zabbix.unsupported.step1[count]  │
+        │ ├─ zabbix.unsupported.step1[log]    │
+        │ ├─ zabbix.unsupported.step2[count]  │
+        │ ├─ zabbix.unsupported.step2[log]    │
+        │ ├─ zabbix.unsupported.step3[count]  │
+        │ └─ zabbix.unsupported.step3[log]    │
         └──────────────┬──────────────────────┘
                        │
         ┌──────────────▼──────────────────────┐
@@ -197,9 +200,9 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
 ```
 /var/lib/zabbix/unsupported-items/
 ├── logs/
-│   ├── unsupported_24h.txt    ← Items in first 24 hours
-│   ├── unsupported_7d.txt     ← Items between 1-7 days
-│   ├── unsupported_30d.txt    ← Items between 7-30 days
+│   ├── unsupported_step1.txt  ← Items in first escalation window
+│   ├── unsupported_step2.txt  ← Items in second escalation window
+│   ├── unsupported_step3.txt  ← Items in third escalation window
 │   └── .lock                  ← Concurrency lock file
 └── .gitkeep
 ```
@@ -221,13 +224,13 @@ Example:
 ### State Transitions
 
 ```
-NEW UNSUPPORTED → unsupported_24h.txt
-                       ↓ (after 1st trigger at 24h)
-                  unsupported_7d.txt
-                       ↓ (after 2nd trigger at 7d)
-                  unsupported_30d.txt
-                       ↓ (after 3rd trigger at 30d)
-                  ← stays in 30d until RESOLVED
+NEW UNSUPPORTED → unsupported_step1.txt
+                       ↓ (after 1st action trigger)
+                  unsupported_step2.txt
+                       ↓ (after 2nd action trigger)
+                  unsupported_step3.txt
+                       ↓ (after 3rd action trigger)
+                  ← stays in step3 until RESOLVED
 
 RESOLVED → Removed from all files immediately
 ```
@@ -240,30 +243,30 @@ RESOLVED → Removed from all files immediately
 
 | Item Key | Type | History | Purpose |
 |----------|------|---------|---------|
-| `zabbix.unsupported.24h[count]` | TRAP | 90d | Count of unsupported in last 24h |
-| `zabbix.unsupported.24h[log]` | TRAP (TEXT) | 7d | Detailed log for 24h window |
-| `zabbix.unsupported.7d[count]` | TRAP | 90d | Count of unsupported in 7 days |
-| `zabbix.unsupported.7d[log]` | TRAP (TEXT) | 7d | Detailed log for 7d window |
-| `zabbix.unsupported.30d[count]` | TRAP | 90d | Count of unsupported in 30 days |
-| `zabbix.unsupported.30d[log]` | TRAP (TEXT) | 7d | Detailed log for 30d window |
+| `zabbix.unsupported.step1[count]` | TRAP | 90d | Count in first escalation window (e.g., 1h) |
+| `zabbix.unsupported.step1[log]` | TRAP (TEXT) | 7d | Detailed log for step1 |
+| `zabbix.unsupported.step2[count]` | TRAP | 90d | Count in second escalation window (e.g., 24h) |
+| `zabbix.unsupported.step2[log]` | TRAP (TEXT) | 7d | Detailed log for step2 |
+| `zabbix.unsupported.step3[count]` | TRAP | 90d | Count in third escalation window (e.g., 7d) |
+| `zabbix.unsupported.step3[log]` | TRAP (TEXT) | 7d | Detailed log for step3 |
 
 ### Triggers
 
 | Name | Expression | Severity | Condition |
 |------|------------|----------|-----------|
-| New unsupported items (24h) | `change(...)>0` | INFO | Count increased |
-| Unsupported items present | `last(...) >= {$UNSUP_24H_WARN}` | INFO | Threshold crossed |
-| Unsupported persistent (7d) | `last(...) >= {$UNSUP_7D_AVG}` | AVERAGE | Dependency on 24h |
-| Unsupported persistent (30d) | `last(...) >= {$UNSUP_30D_HIGH}` | HIGH | Dependency on 7d |
+| New unsupported items (1h) | `change(...)>0` | INFO | Count increased in step1 |
+| Unsupported items present (1h) | `last(...) >= {$UNSUP_1}` | INFO | Threshold crossed in step1 |
+| Unsupported persistent (> 24h) | `last(...) >= {$UNSUP_2}` | AVERAGE | Threshold crossed in step2 |
+| Unsupported persistent (> 7d) | `last(...) >= {$UNSUP_3}` | HIGH | Threshold crossed in step3 |
 | Monitor not updating | `nodata(..., {$UNSUP_NODATA})=1` | AVERAGE | Script/sender failure |
 
 ### Macros
 
 | Macro | Default | Purpose |
 |-------|---------|---------|
-| `{$UNSUP_24H_WARN}` | `1` | Alert if count ≥ this in 24h |
-| `{$UNSUP_7D_AVG}` | `1` | Alert if count ≥ this in 7d |
-| `{$UNSUP_30D_HIGH}` | `1` | Alert if count ≥ this in 30d |
+| `{$UNSUP_1}` | `1` | Alert if count ≥ this in step1 |
+| `{$UNSUP_2}` | `1` | Alert if count ≥ this in step2 |
+| `{$UNSUP_3}` | `1` | Alert if count ≥ this in step3 |
 | `{$UNSUP_NODATA}` | `10m` | Alert if no data for this duration |
 
 ### Configure Macros
@@ -271,10 +274,10 @@ RESOLVED → Removed from all files immediately
 Go to **Configuration → Templates → Zabbix Unsupported Monitoring → Macros** and adjust thresholds:
 
 ```
-{$UNSUP_24H_WARN}    = 2    # Alert if 2+ items unsupported in 24h
-{$UNSUP_7D_AVG}      = 1    # Alert if 1+ items persisting beyond 7d
-{$UNSUP_30D_HIGH}    = 0    # Alert immediately if 30d items exist
-{$UNSUP_NODATA}      = 15m  # Alert if script hasn't reported in 15 min
+{$UNSUP_1}       = 2    # Alert if 2+ items in step1
+{$UNSUP_2}       = 1    # Alert if 1+ items persisting in step2
+{$UNSUP_3}       = 0    # Alert immediately if step3 items exist
+{$UNSUP_NODATA}  = 15m  # Alert if script hasn't reported in 15 min
 ```
 
 ---
@@ -286,11 +289,12 @@ Go to **Configuration → Templates → Zabbix Unsupported Monitoring → Macros
 Set low thresholds to catch issues early:
 
 ```
-{$UNSUP_24H_WARN}  = 1
-{$UNSUP_7D_AVG}    = 0
-{$UNSUP_30D_HIGH}  = 0
+{$UNSUP_1}  = 1
+{$UNSUP_2}  = 0
+{$UNSUP_3}  = 0
 ```
 
+**Action timing:** 1h, 24h, 7d  
 **Result:** Alert on any unsupported item immediately, escalate severity by age.
 
 ### Example 2: Lenient Monitoring (Large Legacy)
@@ -298,11 +302,12 @@ Set low thresholds to catch issues early:
 Increase thresholds for environments with expected temporary issues:
 
 ```
-{$UNSUP_24H_WARN}  = 10
-{$UNSUP_7D_AVG}    = 3
-{$UNSUP_30D_HIGH}  = 1
+{$UNSUP_1}  = 10
+{$UNSUP_2}  = 3
+{$UNSUP_3}  = 1
 ```
 
+**Action timing:** 2h, 12h, 5d  
 **Result:** Only alert after thresholds crossed, focus on persistent problems.
 
 ### Example 3: Critical Systems Only
@@ -311,11 +316,12 @@ Monitor specific host groups with stricter rules:
 
 ```
 # Apply template only to "Critical-Servers" host group
-{$UNSUP_24H_WARN}  = 0      # Any unsupported = alert
-{$UNSUP_7D_AVG}    = 0
-{$UNSUP_30D_HIGH}  = 0
+{$UNSUP_1}  = 0      # Any unsupported = alert
+{$UNSUP_2}  = 0
+{$UNSUP_3}  = 0
 ```
 
+**Action timing:** 30m, 4h, 2d  
 **Result:** Maximum sensitivity for critical infrastructure.
 
 ---
@@ -349,11 +355,11 @@ Test the script directly:
 ### Check Log Files
 
 ```bash
-# View current 24h unsupported items
-cat /var/lib/zabbix/unsupported-items/logs/unsupported_24h.txt
+# View current step1 unsupported items
+cat /var/lib/zabbix/unsupported-items/logs/unsupported_step1.txt
 
 # Watch for updates in real-time
-tail -f /var/lib/zabbix/unsupported-items/logs/unsupported_24h.txt
+tail -f /var/lib/zabbix/unsupported-items/logs/unsupported_step1.txt
 
 # Count items in each category
 wc -l /var/lib/zabbix/unsupported-items/logs/unsupported_*.txt
@@ -460,7 +466,7 @@ Create a new **Dashboard → Add widget → Data overview**
 
 **Data set:**
 - Host: `ZABBIX-SERVER` (or your Zabbix host)
-- Item: `zabbix.unsupported.24h[count]`
+- Item: `zabbix.unsupported.step1[count]`
 
 **Panel options:**
 - Color scheme: Green (0) → Orange (1+) → Red (5+)
@@ -470,7 +476,7 @@ Create a new **Dashboard → Add widget → Data overview**
 ### Custom Chart
 
 Add **Graph** widget:
-- Item: `zabbix.unsupported.24h[count]`
+- Item: `zabbix.unsupported.step1[count]`
 - Show: Last 7 days
 - Graph type: Line
 
@@ -483,19 +489,19 @@ This shows escalation over time.
 ### Cleanup Old Entries
 
 The script automatically maintains:
-- **24h log**: Entries moved to 7d after 1st trigger
-- **7d log**: Entries moved to 30d after 2nd trigger
-- **30d log**: Manual cleanup via recovery operations or external tools
+- **step1 log**: Entries moved to step2 after 1st trigger
+- **step2 log**: Entries moved to step3 after 2nd trigger
+- **step3 log**: Manual cleanup via recovery operations or external tools
 
 To manually clean old entries:
 
 ```bash
 # Backup first
-cp /var/lib/zabbix/unsupported-items/logs/unsupported_30d.txt \
-   /var/lib/zabbix/unsupported-items/logs/unsupported_30d.txt.bak.$(date +%s)
+cp /var/lib/zabbix/unsupported-items/logs/unsupported_step3.txt \
+   /var/lib/zabbix/unsupported-items/logs/unsupported_step3.txt.bak.$(date +%s)
 
 # Clear a category (keep only recent entries)
-echo "" > /var/lib/zabbix/unsupported-items/logs/unsupported_30d.txt
+echo "" > /var/lib/zabbix/unsupported-items/logs/unsupported_step3.txt
 ```
 
 ### Backup Logs
@@ -594,5 +600,5 @@ See [LICENSE](LICENSE) for details.
 Built for infrastructure teams managing complex Zabbix deployments. Inspired by community discussions on [Zabbix Forums](https://www.zabbix.com/forum) about better unsupported item handling.
 
 **Author:** Nicola Carmelo Gurgone (@N1k0droid)  
-**Version:** 3.0.1  
+**Version:** 4.0.0  
 **Last Updated:** February 2026
