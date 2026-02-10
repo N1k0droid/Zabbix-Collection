@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# zbx_unsupported_monitor.sh    V 3.0.1                        @N1k0droid 02-26
+# zbx_unsupported_monitor.sh    V 3.0.1                    Nicola Gurgone 02-26
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -96,7 +96,7 @@ normalize_state() {
 event_datetime_or_now() {
   local t="$1"
   local d="$2"
-  if [ -n "$t" ] && [ -n "$d" ] && [[ "$t" != \\{* ]] && [[ "$d" != \\{* ]]; then
+  if [ -n "$t" ] && [ -n "$d" ] && [[ "$t" != \{* ]] && [[ "$d" != \{* ]]; then
     echo "$d $t"
     return 0
   fi
@@ -263,7 +263,7 @@ process_category_for_send() {
   log_value="$(awk -F'|' '
       NF>=5 && $2!="" && $4!="" {
         count++
-        printf "%s - HOST: %s ITEM: %s KEY: %s STATE: %s\\n", $1, $2, $3, $4, $5
+        printf "%s - HOST: %s ITEM: %s KEY: %s STATE: %s\n", $1, $2, $3, $4, $5
       }
       END {
         if (count==0) {
@@ -278,7 +278,7 @@ process_category_for_send() {
     log_value="No unsupported items"
   else
     # Remove trailing newline (cosmetic) if present
-    log_value="${log_value%$'\\n'}"
+    log_value="${log_value%$'\n'}"
   fi
 
   send_metric "zabbix.unsupported.${category}[log]" "$log_value" || return 1
