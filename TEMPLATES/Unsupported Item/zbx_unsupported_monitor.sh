@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# zbx_unsupported_monitor.sh    V 3.0.1                        @N1k0droid 02-26
+# zbx_unsupported_monitor.sh    V 3.1.3                        @N1k0droid 13-02
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -14,8 +14,10 @@ readonly SYSLOG_TAG="zbx-unsupported"
 readonly ZABBIX_SENDER="/usr/bin/zabbix_sender"
 readonly ZABBIX_SERVER="127.0.0.1"
 readonly ZABBIX_PORT="10051"
-readonly ZABBIX_HOSTNAME="ZABBIX-SERVER"
+readonly ZABBIX_HOSTNAME="ZABBIX_SERVER"
 readonly DELAY_BEFORE_SEND="3"
+readonly CHUNK_SIZE="250"
+readonly CHUNK_DELAY="1"
 
 HOST_NAME="${1:-UNKNOWN}"
 ITEM_NAME="${2:-UNKNOWN}"
@@ -111,8 +113,6 @@ ensure_file() {
     return 0
   fi
 
-  # If the file only contains the placeholder line, treat it as empty.
-  # Also tolerate trailing whitespace/newlines.
   if awk 'NF==0{next} {lines++; if($0!="No unsupported items") bad=1} END{exit (lines>0 && bad==0)?0:1}' "$f"; then
     : > "$f" || return 1
   fi
@@ -129,9 +129,7 @@ remove_entry_from_file() {
 
   local tmp="${file}.tmp.$$"
   awk -F'|' -v h="$host" -v k="$key" '
-    # Keep lines that are not valid entries
     NF < 5 { print; next }
-    # Drop matching entry
     !($2==h && $4==k) { print }
   ' "$file" > "$tmp" || { rm -f "$tmp"; return 1; }
 
@@ -258,33 +256,57 @@ process_category_for_send() {
 
   ensure_file "$file" || return 1
 
-  # Build output and count only valid entries (NF>=5). Ignore placeholders and junk.
-  local log_value line_count
-  log_value="$(awk -F'|' '
-      NF>=5 && $2!="" && $4!="" {
-        count++
-        printf "%s - HOST: %s ITEM: %s KEY: %s STATE: %s\n", $1, $2, $3, $4, $5
-      }
-      END {
-        if (count==0) {
-          # Print nothing; caller will replace with placeholder
-        }
-      }
-    ' "$file")"
-
+  local line_count
   line_count="$(awk -F'|' 'NF>=5 && $2!="" && $4!="" {count++} END{print count+0}' "$file")"
 
-  if [ "$line_count" -eq 0 ]; then
-    log_value="No unsupported items"
-  else
-    # Remove trailing newline (cosmetic) if present
-    log_value="${log_value%$'\n'}"
-  fi
-
-  send_metric "zabbix.unsupported.${category}[log]" "$log_value" || return 1
   send_metric "zabbix.unsupported.${category}[count]" "$line_count" || return 1
 
-  log_info "Category $category: $line_count items sent"
+  if [ "$line_count" -eq 0 ]; then
+    send_metric "zabbix.unsupported.${category}[log]" "No unsupported items" || return 1
+    log_info "Category $category: 0 items sent"
+    return 0
+  fi
+
+  mapfile -t lines < <(awk -F'|' 'NF>=5 && $2!="" && $4!="" {print}' "$file")
+
+  local total_lines="${#lines[@]}"
+  local chunk_start=0
+  local chunk_num=1
+  local total_chunks=$(( (total_lines + CHUNK_SIZE - 1) / CHUNK_SIZE ))
+
+  while [ "$chunk_start" -lt "$total_lines" ]; do
+    local chunk_end=$(( chunk_start + CHUNK_SIZE ))
+    [ "$chunk_end" -gt "$total_lines" ] && chunk_end="$total_lines"
+
+    local chunk_content=""
+    for ((i=chunk_start; i<chunk_end; i++)); do
+      local line_number=$((i + 1))
+      IFS='|' read -r dt host name key state <<< "${lines[$i]}"
+      chunk_content+="${line_number}) ${dt} - HOST: ${host} ITEM: ${name} KEY: ${key} STATE: ${state}"$'\n'
+    done
+
+    local chunk_start_row=$((chunk_start + 1))
+    local header="Part ${chunk_num}/${total_chunks}, row ${chunk_start_row}-${chunk_end} - Total: ${total_lines}"$'\n\n'
+
+    if [ "$chunk_num" -lt "$total_chunks" ]; then
+      local footer=$'\n'"--- Too long entry for zabbix sender, check next message ---"
+      chunk_content="${header}${chunk_content}${footer}"
+    else
+      chunk_content="${header}${chunk_content}"$'\n'"--- End of log ---"
+    fi
+
+    chunk_content="${chunk_content%$'\n'}"
+
+    send_metric "zabbix.unsupported.${category}[log]" "$chunk_content" || return 1
+    log_info "Category $category: sent part ${chunk_num}/${total_chunks} (row ${chunk_start_row}-${chunk_end})"
+
+    chunk_start="$chunk_end"
+    ((chunk_num++))
+
+    [ "$chunk_num" -le "$total_chunks" ] && sleep "$CHUNK_DELAY"
+  done
+
+  log_info "Category $category: $total_lines items sent in $total_chunks part(s)"
   return 0
 }
 
