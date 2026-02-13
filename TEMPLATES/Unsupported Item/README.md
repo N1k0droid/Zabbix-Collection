@@ -1,6 +1,6 @@
 # Zabbix Unsupported Items Monitor
 
-[![Version](https://img.shields.io/badge/version-4.0.0-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
+[![Version](https://img.shields.io/badge/version-3.1.3-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
@@ -323,6 +323,23 @@ Monitor specific host groups with stricter rules:
 
 **Action timing:** 30m, 4h, 2d  
 **Result:** Maximum sensitivity for critical infrastructure.
+
+---
+
+## 🚀 Large-Scale Environments
+
+### Handling >250 Unsupported Items
+
+**Why chunking?**
+- Prevents `Argument list too long` errors when passing large data to `zabbix_sender`
+- Avoids frontend performance issues (HTTP 500 errors) when displaying very long logs
+- Maintains data integrity even with 1000+ unsupported items
+
+**How it works:**
+- Each log metric (`step1[log]`, `step2[log]`, `step3[log]`) is sent in parts if >250 items
+- Parts are sent sequentially with 1-second delay between transmissions
+- Last part displayed in frontend includes header: `Part X/Y, row A-B - Total: N`
+- Count metrics (`[count]`) always reflect the true total
 
 ---
 
