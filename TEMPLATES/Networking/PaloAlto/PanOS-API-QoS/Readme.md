@@ -1,5 +1,10 @@
 # Template - PanOS-API - QoS (Dynamic Baseline)
 
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
+![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
+
 Zabbix 7.x template to monitor per-class QoS throughput on Palo Alto Networks firewalls using the PAN-OS API.
 
 This template discovers a list of QoS interfaces, collects raw QoS throughput output per interface, and creates per-class numeric metrics (Class 1 to Class 8) in bps. Alerting is based on dynamic baselines using short versus long averages (spike detection) and long-term trend changes.
@@ -163,13 +168,7 @@ No data window for the master item. A **HIGH** severity event is generated if no
   - Lower spike factors (`WARN/HIGH/DISASTER`)
   - Lower `{$QOS_TREND_FACTOR}`
 
----
 
-**Author:** Nicola Carmelo Gurgone (@N1k0droid)
-
-**Version:** 1.6.0
-
-Last Updated: February 2026
 
 ---
 
@@ -179,4 +178,3 @@ MIT License © 2026 Nicola Gurgone (@N1k0droid)
 
 See [LICENSE](LICENSE) for details.
 
----
