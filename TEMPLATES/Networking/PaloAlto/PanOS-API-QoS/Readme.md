@@ -166,7 +166,9 @@ No data window for the master item. A **HIGH** severity event is generated if no
 ---
 
 **Author:** Nicola Carmelo Gurgone (@N1k0droid)
-**Version:** 3.1.3
+
+**Version:** 1.6.0
+
 Last Updated: February 2026
 
 ---
