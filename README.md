@@ -40,6 +40,14 @@ Personal collection of Zabbix templates, configurations, best practices and moni
   Link: https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Networking/Juniper/Led%20Status%20Discovery/juniper_mx204_led_template.yaml  
   Description: Discovery-based monitoring for chassis/module LED status on Juniper MX204 (typically via SNMP/OID discovery, see folder content for details).
 
+### Networking / PaloAlto
+
+- **PaloAlto PanOS-API - QoS (Dynamic Baseline)**  
+  Path: `TEMPLATES/Networking/PaloAlto/PanOS-API-QoS`  
+  Template file: `Template_PanOS-API_QoS_V.x.x.yaml`  
+  Link: https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Networking/Juniper/Led%20Status%20Discovery/juniper_mx204_led_template.yaml  
+  Description: Discovery-based monitoring for per-class QoS throughput on Palo Alto firewalls using PAN-OS API.
+
 ### SMB
 
 - **SMB**  
