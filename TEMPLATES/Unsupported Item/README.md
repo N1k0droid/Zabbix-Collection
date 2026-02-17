@@ -615,7 +615,3 @@ See [LICENSE](LICENSE) for details.
 ## 🎉 Acknowledgments
 
 Built for infrastructure teams managing complex Zabbix deployments. Inspired by community discussions on [Zabbix Forums](https://www.zabbix.com/forum) about better unsupported item handling.
-
-**Author:** Nicola Carmelo Gurgone (@N1k0droid)  
-**Version:** 3.1.3  
-**Last Updated:** February 2026
