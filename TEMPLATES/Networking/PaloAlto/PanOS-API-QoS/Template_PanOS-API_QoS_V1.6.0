@@ -1,0 +1,456 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+  templates:
+    - uuid: 3f0c2a1b9d3e4f12a8b9c0d1e2f3a4b5
+      template: 'Template - PanOS-API - QoS'
+      name: 'Template - PanOS-API - QoS'
+      description: |
+        Collect QoS per-class throughput using PAN-OS API (API key authentication).
+
+        Deployment macros to set on the host or host group:
+        - {$API_KEY}                 PAN-OS API key
+        - {$QOS_INTERFACES}          Pipe-separated interface list for discovery (example: ethernet1/2|ethernet1/3)
+
+        Dynamic alerting macros (bps and time windows):
+        - {$QOS_MIN_BASELINE}        Minimum baseline average (bps) required to evaluate dynamic triggers
+        - {$QOS_SPIKE_SHORT}         Short window used for spike detection (example: 10m)
+        - {$QOS_SPIKE_LONG}          Long window baseline for spike detection (example: 1h)
+        - {$QOS_SPIKE_WARN}          Spike factor for warning (example: 2)
+        - {$QOS_SPIKE_HIGH}          Spike factor for high (example: 3)
+        - {$QOS_SPIKE_DISASTER}      Spike factor for disaster (example: 5)
+
+        Trend alerting macros:
+        - {$QOS_TREND_SHORT}         Short trend window (example: 24h)
+        - {$QOS_TREND_LONG}          Long trend window (example: 7d)
+        - {$QOS_TREND_FACTOR}        Trend factor (example: 1.5)
+
+        No data macro:
+        - {$QOS_NODATA}              No data window for master item (example: 10m)
+
+        Notes:
+        - Master item retrieves throughput in kbps. Dependent items convert it to bps.
+        - Spike triggers compare avg(short) vs avg(long) and are mutually exclusive by ranges.
+        - Trend trigger compares avg(trend_short) vs avg(trend_long) and is informational.
+      groups:
+        - name: Templates
+      vendor:
+        name: N1k0droid
+        version: '1.6.0'
+      discovery_rules:
+        - uuid: 8c1d0e2f7a3b4c56b8d9a0e1f2a3b4c5
+          name: 'QoS interface discovery'
+          type: SCRIPT
+          key: panos.qos.if.discovery
+          delay: 1h
+          params: |
+            // Zabbix JavaScript
+            var ifs = "{$QOS_INTERFACES}";
+            if (!ifs) {
+              return JSON.stringify({data: []});
+            }
+            var arr = ifs.split("|").map(function(s){ return s.trim(); }).filter(function(s){ return s.length > 0; });
+            var data = arr.map(function(i){ return {"{#IFNAME}": i}; });
+            return JSON.stringify({data: data});
+          description: 'Discover QoS interfaces from {$QOS_INTERFACES}'
+          item_prototypes:
+            - uuid: 2b3c4d5e6f704b23a8c9d0e1f2a3b4c6
+              name: 'QoS class 1 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class1.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 1 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 1\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c01b2c3d4e5f4a12b8c9d0e1f2a3b403
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 1 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b01b2c3d4e5f4a12b8c9d0e1f2a3b402
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 1 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a01b2c3d4e5f4a12b8c9d0e1f2a3b401
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 1 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: 2afdb5a1392f423eb046f1d184b9a7bc
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class1.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 1 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 3c4d5e6f70814c34b8c9d0e1f2a3b4c7
+              name: 'QoS class 2 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class2.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 2 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 2\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c11b2c3d4e5f4a12b8c9d0e1f2a3b413
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 2 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b11b2c3d4e5f4a12b8c9d0e1f2a3b412
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 2 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a11b2c3d4e5f4a12b8c9d0e1f2a3b411
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 2 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: c547e7ab241147d2886e38b8d179224e
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class2.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 2 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 4d5e6f7081924d45a8c9d0e1f2a3b4c8
+              name: 'QoS class 3 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class3.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 3 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 3\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c21b2c3d4e5f4a12b8c9d0e1f2a3b423
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 3 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b21b2c3d4e5f4a12b8c9d0e1f2a3b422
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 3 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a21b2c3d4e5f4a12b8c9d0e1f2a3b421
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 3 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: d5d4885421074bd19e3b05a24fbbab9f
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class3.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 3 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 5e6f708192a34e56b8c9d0e1f2a3b4c9
+              name: 'QoS class 4 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class4.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 4 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 4\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c31b2c3d4e5f4a12b8c9d0e1f2a3b433
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 4 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b31b2c3d4e5f4a12b8c9d0e1f2a3b432
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 4 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a31b2c3d4e5f4a12b8c9d0e1f2a3b431
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 4 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: ba58c651704541fb84e1589e6d6fcd6d
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class4.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 4 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 6f708192a3b44f67a8c9d0e1f2a3b4ca
+              name: 'QoS class 5 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class5.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 5 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 5\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c41b2c3d4e5f4a12b8c9d0e1f2a3b443
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 5 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b41b2c3d4e5f4a12b8c9d0e1f2a3b442
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 5 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a41b2c3d4e5f4a12b8c9d0e1f2a3b441
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 5 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: e6c426822c674d88bd24bdf8c01cf8c2
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class5.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 5 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 708192a3b4c44078b8c9d0e1f2a3b4cb
+              name: 'QoS class 6 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class6.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 6 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 6\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c51b2c3d4e5f4a12b8c9d0e1f2a3b453
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 6 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b51b2c3d4e5f4a12b8c9d0e1f2a3b452
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 6 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a51b2c3d4e5f4a12b8c9d0e1f2a3b451
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 6 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: b1f5ff16102b45a5880c2a11b6678dfe
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class6.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 6 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 8192a3b4c5d44189a8c9d0e1f2a3b4cc
+              name: 'QoS class 7 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class7.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 7 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 7\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c61b2c3d4e5f4a12b8c9d0e1f2a3b463
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 7 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b61b2c3d4e5f4a12b8c9d0e1f2a3b462
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 7 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a61b2c3d4e5f4a12b8c9d0e1f2a3b461
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 7 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: b1cdb7c606cb4222ba89fc547afe4f42
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class7.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 7 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 92a3b4c5d6e4429ab8c9d0e1f2a3b4cd
+              name: 'QoS class 8 throughput [{#IFNAME}]'
+              type: DEPENDENT
+              key: 'panos.qos.class8.bps[{#IFNAME}]'
+              delay: '0'
+              history: 90d
+              value_type: FLOAT
+              units: bps
+              description: 'QoS class 8 throughput converted to bps.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'Class 8\s+([0-9]+)\s+kbps'
+                    - '\1'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              master_item:
+                key: 'panos.qos.raw[{#IFNAME}]'
+              trigger_prototypes:
+                - uuid: c71b2c3d4e5f4a12b8c9d0e1f2a3b473
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 8 throughput spike disaster'
+                  priority: DISASTER
+                  description: 'Short window average is above the disaster spike factor compared to the long window average.'
+                - uuid: b71b2c3d4e5f4a12b8c9d0e1f2a3b472
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_DISASTER}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 8 throughput spike high'
+                  priority: HIGH
+                  description: 'Short window average is above the high spike factor compared to the long window average.'
+                - uuid: a71b2c3d4e5f4a12b8c9d0e1f2a3b471
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})>{$QOS_SPIKE_WARN}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_SHORT})<={$QOS_SPIKE_HIGH}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_SPIKE_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 8 throughput spike warning'
+                  priority: WARNING
+                  description: 'Short window average is above the warning spike factor compared to the long window average.'
+                - uuid: ca6b534634844cd4a1f9c73137f02ed0
+                  expression: 'avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_TREND_SHORT})>{$QOS_TREND_FACTOR}*avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_TREND_LONG}) and avg(/Template - PanOS-API - QoS/panos.qos.class8.bps[{#IFNAME}],{$QOS_TREND_LONG})>{$QOS_MIN_BASELINE}'
+                  name: 'QoS {#IFNAME} class 8 throughput trend change'
+                  priority: INFO
+                  description: 'Short trend window average is above the trend factor compared to the long trend window average.'
+
+            - uuid: 1a2b3c4d5e6f4a12b8c9d0e1f2a3b4c5
+              name: 'QoS raw data [{#IFNAME}]'
+              type: HTTP_AGENT
+              key: 'panos.qos.raw[{#IFNAME}]'
+              history: 90d
+              value_type: TEXT
+              trends: '0'
+              description: 'Master item. Retrieves QoS throughput output for the interface.'
+              preprocessing:
+                - type: XML_TO_JSON
+                  parameters:
+                    - ''
+                - type: JSONPATH
+                  parameters:
+                    - '$.response.result'
+              timeout: 5s
+              url: 'https://{HOST.CONN}/api/'
+              query_fields:
+                - name: type
+                  value: op
+                - name: cmd
+                  value: '<show><qos><interface><entry name=''{#IFNAME}''><throughput>0</throughput></entry></interface></qos></show>'
+                - name: key
+                  value: '{$API_KEY}'
+              trigger_prototypes:
+                - uuid: 1426b4276451466180eca7499149053f
+                  expression: 'nodata(/Template - PanOS-API - QoS/panos.qos.raw[{#IFNAME}],{$QOS_NODATA})=1'
+                  name: 'QoS {#IFNAME} no data for {$QOS_NODATA}'
+                  priority: HIGH
+                  description: 'No QoS data has been received for the interface within the defined time window.'
+
+      macros:
+        - macro: '{$API_KEY}'
+          description: 'PAN-OS API key'
+        - macro: '{$QOS_INTERFACES}'
+          description: 'List of interfaces to discover (pipe-separated)'
+
+        - macro: '{$QOS_NODATA}'
+          value: '10m'
+          description: 'No data window for QoS master item'
+
+        - macro: '{$QOS_MIN_BASELINE}'
+          value: '10000000'
+          description: 'Minimum baseline average in bps required to evaluate dynamic triggers'
+
+        - macro: '{$QOS_SPIKE_SHORT}'
+          value: '10m'
+          description: 'Short window for spike detection'
+        - macro: '{$QOS_SPIKE_LONG}'
+          value: '1h'
+          description: 'Long window baseline for spike detection'
+        - macro: '{$QOS_SPIKE_WARN}'
+          value: '2'
+          description: 'Spike factor for warning'
+        - macro: '{$QOS_SPIKE_HIGH}'
+          value: '3'
+          description: 'Spike factor for high'
+        - macro: '{$QOS_SPIKE_DISASTER}'
+          value: '5'
+          description: 'Spike factor for disaster'
+
+        - macro: '{$QOS_TREND_SHORT}'
+          value: '24h'
+          description: 'Short trend window'
+        - macro: '{$QOS_TREND_LONG}'
+          value: '7d'
+          description: 'Long trend window'
+        - macro: '{$QOS_TREND_FACTOR}'
+          value: '1.5'
+          description: 'Trend factor'
