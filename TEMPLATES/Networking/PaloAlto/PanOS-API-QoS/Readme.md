@@ -1,180 +1,84 @@
 # Template - PanOS-API - QoS (Dynamic Baseline)
 
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
+[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](https://github.com/N1k0droid/zabbix-panos-qos)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
 
 Zabbix 7.x template to monitor per-class QoS throughput on Palo Alto Networks firewalls using the PAN-OS API.
 
-This template discovers a list of QoS interfaces, collects raw QoS throughput output per interface, and creates per-class numeric metrics (Class 1 to Class 8) in bps. Alerting is based on dynamic baselines using short versus long averages (spike detection) and long-term trend changes.
-
----
+**New in v1.8.0:** Independent macro configuration per QoS class allows fine-tuned thresholds and dynamic parameters for each traffic class.
 
 ## Features
 
 - Interface discovery by macro (LLD)
-- Master item (HTTP Agent) using PAN-OS API key authentication
 - 8 dependent items per interface (Class 1 to Class 8)
-- Unit conversion from kbps to bps
-- Dynamic alerting:
-  - Spike detection (short vs long window, factor-based)
-  - Trend change detection (24h vs 7d, factor-based)
-- No data trigger for master item polling
-
----
+- **Dual alerting:** Static thresholds + Dynamic baselines (spike/trend detection)
+- **Per-class macro configuration:** Each QoS class (1-8) has independent parameters
+- 57 triggers per interface (56 class triggers + 1 nodata)
 
 ## Requirements
 
 - Zabbix 7.x
-- Palo Alto firewall with API access enabled
-- HTTPS connectivity from Zabbix to firewall management interface
+- Palo Alto firewall with API access
 - PAN-OS API key
-
----
-
-## How It Works
-
-1. LLD discovery reads the macro `{$QOS_INTERFACES}`
-2. For each interface in the list, Zabbix creates:
-   - 1 master item: `panos.qos.raw[{#IFNAME}]`
-   - 8 dependent items: `panos.qos.classX.bps[{#IFNAME}]` where X = 1..8
-3. The master item queries PAN-OS with: `show qos interface <IFNAME> throughput 0`
-4. Dependent items extract `Class X <value> kbps` via REGEX and multiply by 1000 to store in bps
-5. Trigger prototypes evaluate dynamic conditions using averages
-
----
-
-## Installation
-
-1. Import the template YAML: **Configuration** → **Templates** → **Import**
-2. Link the template to your firewall host
-3. Configure required macros on the host or host group (see below)
-
----
 
 ## Macros
 
-### Authentication
+### Global Macros (3)
 
-**`{$API_KEY}`** *(required)*  
-PAN-OS API key used by the HTTP Agent master item.
+- `{$API_KEY}` - PAN-OS API key *(required)*
+- `{$QOS_INTERFACES}` - Pipe-separated interface list *(required)*
+- `{$QOS_NODATA}` - No data timeout (default: 10m)
 
-**Key generation example:**  
+### Per-Class Macros (12 × 8 classes = 96)
+
+Each QoS class (1-8) has:
+
+**Static Thresholds (bps):**
+- `{$QOS_THR_WARN_CLASSN}` = 10 Gbps
+- `{$QOS_THR_HIGH_CLASSN}` = 10 Gbps
+- `{$QOS_THR_DISASTER_CLASSN}` = 10 Gbps
+
+**Dynamic Baseline:**
+- `{$QOS_MIN_BASELINE_CLASSN}` = 10 Mbps
+- `{$QOS_SPIKE_SHORT_CLASSN}` = 10m
+- `{$QOS_SPIKE_LONG_CLASSN}` = 1h
+- `{$QOS_SPIKE_WARN_CLASSN}` = 2×
+- `{$QOS_SPIKE_HIGH_CLASSN}` = 3×
+- `{$QOS_SPIKE_DISASTER_CLASSN}` = 5×
+
+**Trend Detection:**
+- `{$QOS_TREND_SHORT_CLASSN}` = 24h
+- `{$QOS_TREND_LONG_CLASSN}` = 7d
+- `{$QOS_TREND_FACTOR_CLASSN}` = 1.5×
+
+## Configuration Examples
+
+### Voice Traffic (Class 1) - High Priority
+
 ```
-https://<firewall>/api/?type=keygen&user=<user>&password=<password>
+{$QOS_THR_WARN_CLASS1} = 1000000000     # 1 Gbps
+{$QOS_SPIKE_WARN_CLASS1} = 1.5          # More sensitive
+{$QOS_MIN_BASELINE_CLASS1} = 1000000    # 1 Mbps minimum
 ```
 
-### Interface Discovery
+### Best Effort (Class 8) - Low Priority
 
-**`{$QOS_INTERFACES}`** *(required)*  
-Pipe-separated list of interfaces to monitor.
-
-**Example:**  
 ```
-ethernet1/2|ethernet1/3|ethernet1/19
+{$QOS_THR_WARN_CLASS8} = 20000000000    # 20 Gbps
+{$QOS_SPIKE_WARN_CLASS8} = 3            # Less sensitive
+{$QOS_MIN_BASELINE_CLASS8} = 50000000   # 50 Mbps minimum
 ```
 
----
+## Triggers Per Class
 
-## Dynamic Alerting Macros
-
-Dynamic alerting is based on comparing averages across different time windows.
-
-### Baseline Guardrail
-
-**`{$QOS_MIN_BASELINE}`** *(default: `10000000`)*  
-Minimum baseline average in bps required to evaluate dynamic triggers.
-
-- Prevents false positives when the baseline traffic is near zero
-- If the long window average is below this value, spike and trend triggers will not evaluate as true
-- Default: `10000000` bps = 10 Mbps
-
-### Spike Detection (short vs long)
-
-Spike detection compares: `avg(item, {$QOS_SPIKE_SHORT})` against `avg(item, {$QOS_SPIKE_LONG})`
-
-**`{$QOS_SPIKE_SHORT}`** *(default: `10m`)*  
-Short averaging window used to measure current behavior (average of the last 10 minutes)
-
-**`{$QOS_SPIKE_LONG}`** *(default: `1h`)*  
-Long averaging window used as baseline reference (average of the last 1 hour)
-
-**`{$QOS_SPIKE_WARN}`** *(default: `2`)*  
-Warning spike factor (warning when short average > 2x long average)
-
-**`{$QOS_SPIKE_HIGH}`** *(default: `3`)*  
-High spike factor (high when short average > 3x long average)
-
-**`{$QOS_SPIKE_DISASTER}`** *(default: `5`)*  
-Disaster spike factor (disaster when short average > 5x long average)
-
-**Spike triggers are mutually exclusive by factor range:**
-- **Warning:** > WARN and ≤ HIGH
-- **High:** > HIGH and ≤ DISASTER
-- **Disaster:** > DISASTER
-
-### Trend Change Detection (long term)
-
-Trend detection compares: `avg(item, {$QOS_TREND_SHORT})` against `avg(item, {$QOS_TREND_LONG})`
-
-**`{$QOS_TREND_SHORT}`** *(default: `24h`)*  
-Short trend window (average of the last 24 hours)
-
-**`{$QOS_TREND_LONG}`** *(default: `7d`)*  
-Long trend window (average of the last 7 days)
-
-**`{$QOS_TREND_FACTOR}`** *(default: `1.5`)*  
-Trend factor (event when 24h average > 1.5x 7d average)  
-Default trigger severity: **INFO**
-
-### No Data Monitoring
-
-**`{$QOS_NODATA}`** *(default: `10m`)*  
-No data window for the master item. A **HIGH** severity event is generated if no master item data is received for 10 minutes.
-
----
-
-## Items Created Per Interface
-
-**Master item:**
-- `panos.qos.raw[{#IFNAME}]` *(Text, HTTP Agent)*
-
-**Dependent items:**
-- `panos.qos.class1.bps[{#IFNAME}]` .. `panos.qos.class8.bps[{#IFNAME}]` *(Numeric float, bps)*
-
----
-
-## Triggers Created Per Interface and Class
-
-**For each class item (1..8):**
-- Spike warning *(WARNING)*
-- Spike high *(HIGH)*
-- Spike disaster *(DISASTER)*
-- Trend change *(INFO)*
-
-**For each interface (master item):**
-- No data *(HIGH)*
-
----
-
-## Notes and Tuning Guidance
-
-- If traffic patterns vary strongly by time of day, increase baseline windows:
-  - `{$QOS_SPIKE_LONG}` to `6h`
-  - `{$QOS_TREND_LONG}` to `14d`
-- If you see false positives on low-usage classes, increase `{$QOS_MIN_BASELINE}`
-- To increase sensitivity:
-  - Lower spike factors (`WARN/HIGH/DISASTER`)
-  - Lower `{$QOS_TREND_FACTOR}`
+Each class (1-8) has 7 triggers:
+- 3 static threshold triggers (warning/high/disaster)
+- 3 spike detection triggers (warning/high/disaster)
+- 1 trend change trigger (info)
 
 
-
----
-
-## 📄 License
+## License
 
 MIT License © 2026 Nicola Gurgone (@N1k0droid)
-
-See [LICENSE](LICENSE) for details.
-
