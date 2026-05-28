@@ -1,3 +1,5 @@
+<img width="1000" height="261" alt="image" src="https://github.com/user-attachments/assets/ab485f23-0c7f-4e11-a0ec-69b4ce1ba5db" />
+
 # Zabbix-Collection
 
 Personal collection of Zabbix templates, configurations, best practices and monitoring knowledge base.
