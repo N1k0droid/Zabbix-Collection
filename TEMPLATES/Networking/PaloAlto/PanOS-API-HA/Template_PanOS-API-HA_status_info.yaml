@@ -1,0 +1,204 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 2ba0849aa6f6476fbdbc8c673c861e9c
+      name: Templates
+  templates:
+    - uuid: d8a045f4678344c4bbc60cc36221a500
+      template: 'Template - PanOS-API - HA Sync Status'
+      name: 'Template - PanOS-API - HA Sync Status'
+      description: |
+        Template for monitoring Palo Alto Networks (PAN-OS) High Availability
+        synchronization status via XML API.
+        
+        Includes:
+        
+          - running-sync / running-sync-enabled/preemptive status check
+          - LLD discovery of compatibility fields (DLP, build-compat,
+            app-compat, iot-compat, av-compat, threat-compat, vpnclient-compat,
+            gpclient-compat,)
+        
+        Before using the template, generate an API token with:
+        
+          curl -g -k -X GET "https://<FW-IP>/api/?type=keygen&user=<USER>&password=<PASSWORD>"
+        
+        Copy the value returned and populate the host macro with the generated API token.
+      vendor:
+        name: N1k0droid
+        version: '1.3'
+      groups:
+        - name: Templates
+      items:
+        - uuid: b7d8bda3a8aa4ce0b353ff50b7d99cc6
+          name: 'PAN-OS HA: Get high-availability All'
+          type: HTTP_AGENT
+          key: panos.ha.get.raw
+          delay: 5m
+          history: 8h
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: XML_TO_JSON
+              parameters:
+                - ''
+          url: 'https://{HOST.CONN}/api/'
+          query_fields:
+            - name: type
+              value: op
+            - name: cmd
+              value: '<show><high-availability><all></all></high-availability></show>'
+            - name: key
+              value: '{$API_KEY}'
+          tags:
+            - tag: component
+              value: API-HA
+          triggers:
+            - uuid: a893cdf4306d4546bc9d45fffdd22d23
+              expression: 'nodata(/Template - PanOS-API - HA Sync Status/panos.ha.get.raw,30m)=1'
+              name: 'PAN-OS HA: No data received for HA status information'
+              priority: HIGH
+              tags:
+                - tag: component
+                  value: API-HA
+        - uuid: 0d36f9da51ae4db284d34cf7ad835e45
+          name: 'PAN-OS HA: Preemptive Status'
+          type: DEPENDENT
+          key: panos.ha.running_preemptive
+          delay: '0'
+          history: 7d
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.response.result.group[''local-info''][''preemptive'']'
+          master_item:
+            key: panos.ha.get.raw
+          tags:
+            - tag: component
+              value: API-HA
+          triggers:
+            - uuid: ac9f383b4a0d41538bd1e52371ab5ae7
+              expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.running_preemptive,,"like","yes")=0'
+              name: 'PAN-OS HA: Preemptive is DISABLED'
+              priority: INFO
+              description: 'Preemptivei s disabled'
+              tags:
+                - tag: component
+                  value: API-HA
+        - uuid: e6d00f0ec68c4d429dae084abc153139
+          name: 'PAN-OS HA: Running Configuration Sync Status'
+          type: DEPENDENT
+          key: panos.ha.running_sync
+          delay: '0'
+          history: 7d
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$..[''running-sync''].first()'
+          master_item:
+            key: panos.ha.get.raw
+          tags:
+            - tag: component
+              value: API-HA
+          triggers:
+            - uuid: 186fe1f4814b47db85d9bf958ae902f4
+              expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.running_sync,,"like","synchronized")=0'
+              name: 'PAN-OS HA: Running configuration NOT synchronized'
+              priority: HIGH
+              description: 'Running Configuration is not synchronized between HA peers (equivalent to CLI: show high-availability all | match "Running Configuration:")'
+              tags:
+                - tag: component
+                  value: API-HA
+        - uuid: aa50499150bd41ea96b9ad934f85d1c8
+          name: 'PAN-OS HA: Running Configuration Sync Enabled'
+          type: DEPENDENT
+          key: panos.ha.running_sync_enabled
+          delay: '0'
+          history: 7d
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$..[''running-sync-enabled''].first()'
+          master_item:
+            key: panos.ha.get.raw
+          tags:
+            - tag: component
+              value: API-HA
+          triggers:
+            - uuid: c6887e988e904bdcbff2082e2d627543
+              expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.running_sync_enabled,,"like","yes")=0'
+              name: 'PAN-OS HA: Running configuration sync is DISABLED'
+              priority: WARNING
+              description: 'Automatic running-config sync between HA peers is disabled'
+              tags:
+                - tag: component
+                  value: API-HA
+      discovery_rules:
+        - uuid: cee5179e51ea48989fe490eecc1d8fc6
+          name: 'PAN-OS HA: Compatibility fields discovery'
+          type: DEPENDENT
+          key: panos.ha.compat.discovery
+          delay: '0'
+          description: |
+            Parses local-info block and builds LLD entries for every
+            *-compat field plus DLP and preemptive.
+          item_prototypes:
+            - uuid: fe3d3f703f184ab09be9f31a686e8ebd
+              name: 'PAN-OS HA: {#COMPATNAME}'
+              type: DEPENDENT
+              key: 'panos.ha.compat[{#COMPATNAME}]'
+              delay: '0'
+              value_type: TEXT
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.response.result.group[''local-info''][''{#COMPATNAME}'']'
+              master_item:
+                key: panos.ha.get.raw
+              tags:
+                - tag: component
+                  value: API-HA
+              trigger_prototypes:
+                - uuid: 8c3f3f4986354a99adb883b8e880ab27
+                  expression: 'nodata(/Template - PanOS-API - HA Sync Status/panos.ha.compat[{#COMPATNAME}],30m)=1'
+                  name: 'PAN-OS HA: No data received for {#COMPATNAME}'
+                  priority: AVERAGE
+                  description: 'No data has been received for compatibility field {#COMPATNAME} in the last 30 minutes.'
+                  tags:
+                    - tag: component
+                      value: API-HA
+                - uuid: 741b5dc3dc9643ff8b905bff0220ce06
+                  expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.compat[{#COMPATNAME}],,"like","Mismatch")=1'
+                  name: 'PAN-OS HA: {#COMPATNAME} Mismatch'
+                  priority: WARNING
+                  description: 'Compatibility field {#COMPATNAME} reports Mismatch between HA peers'
+                  tags:
+                    - tag: component
+                      value: API-HA
+          master_item:
+            key: panos.ha.get.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var localInfo = data.response.result.group['local-info'] || {};
+                  var fields = ['DLP','build-compat','app-compat','iot-compat','av-compat',
+                                'threat-compat','vpnclient-compat','gpclient-compat'];
+                  var out = [];
+                  fields.forEach(function(f) {
+                    if (localInfo.hasOwnProperty(f)) {
+                      out.push({'{#COMPATNAME}': f});
+                    }
+                  });
+                  return JSON.stringify({data: out});
+      macros:
+        - macro: '{$API_KEY}'
+          value: CHANGE_ME
+          description: 'PAN-OS XML API key'
