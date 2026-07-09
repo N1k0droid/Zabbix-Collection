@@ -18,7 +18,7 @@ Included checks:
 - Zabbix 7.0 or newer recommended.
 - Reachable firewall management IP or FQDN.
 - PAN-OS administrator account with XML API access enabled.
-- PAN-OS XML API key. [web:110][web:111]
+- PAN-OS XML API key.
 
 ## Template macro
 
@@ -32,7 +32,7 @@ The template sends requests to:
 
 ## API key generation
 
-Palo Alto documents API key generation through `type=keygen`, and the returned key is contained in the `<key>` element of the XML response. [web:110]
+Palo Alto documents API key generation through `type=keygen`, and the returned key is contained in the `<key>` element of the XML response.
 
 Officially documented example from Palo Alto:
 
@@ -52,7 +52,7 @@ Expected response:
 <response status="success"><result><key>API_KEY</key></result></response>
 ```
 
-Copy the value inside `<key>...</key>` and populate the `{$API_KEY}` macro. [web:110]
+Copy the value inside `<key>...</key>` and populate the `{$API_KEY}` macro.
 
 ## Configuration
 
@@ -61,8 +61,7 @@ Copy the value inside `<key>...</key>` and populate the `{$API_KEY}` macro. [web
 3. Set `HOST.CONN` to the management IP or FQDN.
 4. Generate the API key.
 5. Populate `{$API_KEY}` with the generated value.
-6. Verify that the firewall account can execute the XML API operational request used by the template. [web:110][web:111]
-
+6. Verify that the firewall account can execute the XML API operational request used by the template.
 ## Monitored data
 
 Main item:
@@ -87,7 +86,11 @@ The template includes alerts for:
 - Compatibility mismatch
 - No data received for discovered compatibility fields
 
+## Reference
+
+- [Get Your API Key](https://docs.paloaltonetworks.com/pan-os/9-1/pan-os-panorama-api/get-started-with-the-pan-os-xml-api/get-your-api-key#idca192ed7-45df-4992-a0f7-41ebe94fbdac)
+
 ## Notes
 
-- This template uses the PAN-OS XML API, not the REST API. [web:110]
+- This template uses the PAN-OS XML API, not the REST API.
 - For production environments, use a dedicated API account with minimum required permissions.
