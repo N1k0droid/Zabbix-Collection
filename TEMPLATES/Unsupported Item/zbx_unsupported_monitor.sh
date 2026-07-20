@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# zbx_unsupported_monitor.sh    V 3.1.3                        @N1k0droid 13-02
+# zbx_unsupported_monitor.sh    V 3.1.4                        @N1k0droid 13-02
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -17,7 +17,8 @@ readonly ZABBIX_PORT="10051"
 readonly ZABBIX_HOSTNAME="ZABBIX_SERVER"
 readonly DELAY_BEFORE_SEND="3"
 readonly CHUNK_SIZE="250"
-readonly CHUNK_DELAY="1"
+readonly CHUNK_DELAY="0"
+readonly GC_DAYS="30"
 
 HOST_NAME="${1:-UNKNOWN}"
 ITEM_NAME="${2:-UNKNOWN}"
@@ -170,6 +171,23 @@ add_or_update_entry() {
   return 0
 }
 
+run_garbage_collection() {
+  local file="$1"
+  [ ! -f "$file" ] && return 0
+
+  local threshold
+  threshold=$(date -d "${GC_DAYS} days ago" '+%Y.%m.%d %H:%M:%S')
+
+  local tmp="${file}.tmp.$$"
+  awk -F'|' -v t="$threshold" '
+    NF < 5 { print; next }
+    $1 >= t { print }
+  ' "$file" > "$tmp" || { rm -f "$tmp"; return 1; }
+
+  mv "$tmp" "$file"
+  return 0
+}
+
 process_event_locked() {
   local dt="$1"
   local state="$2"
@@ -292,7 +310,8 @@ process_category_for_send() {
       local footer=$'\n'"--- Too long entry for zabbix sender, check next message ---"
       chunk_content="${header}${chunk_content}${footer}"
     else
-      chunk_content="${header}${chunk_content}"$'\n'"--- End of log ---"
+      local log_msg=$'\n'"Items older than 30 days are automatically removed, please check your unsupported items manually."
+      chunk_content="${header}${chunk_content}${log_msg}"$'\n'"--- End of log ---"
     fi
 
     chunk_content="${chunk_content%$'\n'}"
@@ -303,7 +322,7 @@ process_category_for_send() {
     chunk_start="$chunk_end"
     ((chunk_num++))
 
-    [ "$chunk_num" -le "$total_chunks" ] && sleep "$CHUNK_DELAY"
+    [ "$chunk_num" -le "$total_chunks" ] && [ "$CHUNK_DELAY" -gt 0 ] && sleep "$CHUNK_DELAY"
   done
 
   log_info "Category $category: $total_lines items sent in $total_chunks part(s)"
@@ -342,16 +361,21 @@ main() {
   local lock_file="${LOG_DIR}/.lock"
   exec 9>"$lock_file" || { log_error "Failed to open lock file $lock_file"; return 1; }
   if command -v flock >/dev/null 2>&1; then
-    flock -x 9
+    flock -w 5 -x 9 || { log_error "Failed to acquire lock within 5 seconds"; return 1; }
   fi
 
-  log_info "PHASE 1: Processing event"
+  log_info "PHASE 1: Garbage collection"
+  for cat in step1 step2 step3; do
+    run_garbage_collection "${LOG_DIR}/unsupported_${cat}.txt"
+  done
+
+  log_info "PHASE 2: Processing event"
   process_event_locked "$EVENT_DT" "$ITEM_STATE" || return 1
 
-  log_info "PHASE 2: Waiting ${DELAY_BEFORE_SEND}s before sending metrics"
+  log_info "PHASE 3: Waiting ${DELAY_BEFORE_SEND}s before sending metrics"
   sleep "$DELAY_BEFORE_SEND"
 
-  log_info "PHASE 3: Sending metrics to Zabbix"
+  log_info "PHASE 4: Sending metrics to Zabbix"
   send_all_metrics || return 1
 
   log_info "Script completed successfully"
