@@ -1,6 +1,6 @@
 # Zabbix Unsupported Items Monitor
 
-[![Version](https://img.shields.io/badge/version-3.1.3-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
+[![Version](https://img.shields.io/badge/version-3.1.4-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
 ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
@@ -13,6 +13,7 @@ This project provides a **complete solution** to monitor, track, and report on u
 
 - **Flexible time-based categorization**: Three configurable escalation steps (default: 1h, 24h, 7d)
 - **Persistent logging**: File-based state tracking via bash script
+- **Automated Garbage Collection**: Native 30-day retention policy (`GC_DAYS=30`) prevents infinite log growth
 - **Automated escalation**: Internal actions trigger at configurable intervals respecting Zabbix's 7-day action step limit
 - **Dashboard-ready metrics**: `zabbix_sender` integration for real-time reporting
 - **Text logs**: Detailed entries showing timestamp, host, item, and state
@@ -35,6 +36,7 @@ This project provides a **complete solution** to monitor, track, and report on u
 ### 1️⃣ Installation
 
 #### Create directory structure
+
 ```bash
 sudo mkdir -p /var/lib/zabbix/unsupported-items/logs
 sudo chown -R zabbix:zabbix /var/lib/zabbix/unsupported-items
@@ -43,14 +45,16 @@ sudo chmod 755 /var/lib/zabbix/unsupported-items/logs
 ```
 
 #### Deploy the script
+
 ```bash
 sudo wget -O /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh \
-  https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Unsupported%20Item/zbx_unsupported_monitor.sh
+  "https://github.com/N1k0droid/Zabbix-Collection/raw/main/TEMPLATES/Unsupported%20Item/zbx_unsupported_monitor.sh"
 sudo chmod 755 /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 sudo chown zabbix:zabbix /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 ```
 
 #### Verify script location
+
 ```bash
 ls -la /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 ```
@@ -70,7 +74,8 @@ Go to **Administration → Media types → Create media type**
 | **Attempts** | `1` |
 
 **Script parameters** (in order):
-```
+
+```text
 {HOST.NAME}
 {ITEM.NAME}
 {ITEM.KEY}
@@ -82,13 +87,15 @@ Go to **Administration → Media types → Create media type**
 **Message templates:**
 
 *Internal problem:*
-```
+
+```text
 Subject: {HOST.NAME}
 Message: "{ITEM.NAME}" "{ITEM.KEY}" "{ITEM.STATE}" "{EVENT.TIME}" "{EVENT.DATE}"
 ```
 
 *Internal problem recovery:*
-```
+
+```text
 Subject: {HOST.NAME}
 Message: "{ITEM.NAME}" "{ITEM.KEY}" "{ITEM.STATE}" "{EVENT.TIME}" "{EVENT.DATE}"
 ```
@@ -105,18 +112,22 @@ Go to **Configuration → Actions → Internal actions → Create action**
 
 **Operations:** Add operation for each escalation step:
 
-**Step 1 (Execute at 1h - configurable):**
+**Step 1 (Execute at 1h – configurable):**
+
 - Send to media type: `Script - Unsupported Items Monitor`
 - Send to users: (or user groups)
 - Custom message: `On`
 
-**Step 2 (Execute at 24h - configurable):**
+**Step 2 (Execute at 24h – configurable):**
+
 - Same as Step 1, delay = `24h` (or your preferred interval)
 
-**Step 3 (Execute at 7d - configurable, max 7d due to Zabbix limitation):**
+**Step 3 (Execute at 7d – configurable, max 7d due to Zabbix limitation):**
+
 - Same as Step 1, delay = `7d` (or your preferred interval ≤ 7 days)
 
 **Recovery operations:**
+
 - Send to media type: `Script - Unsupported Items Monitor`
 - Same custom message settings
 
@@ -124,8 +135,7 @@ Go to **Configuration → Actions → Internal actions → Create action**
 
 #### Import Template
 
-Go to **Configuration → Templates → Import** and upload `zbx_unsupported_monitor_xx.yaml`:
-
+Go to **Configuration → Templates → Import** and upload `zbx_unsupported_monitor_xx.yaml`.
 
 Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server** host.
 
@@ -135,7 +145,7 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
 
 ### Workflow Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │ ZABBIX SERVER: Internal Event (Item became unsupported)         │
 └──────────────────────┬──────────────────────────────────────────┘
@@ -155,7 +165,13 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         └──────────────┬───────────────────────┘
                        │
         ┌──────────────▼───────────────┐
-        │ PHASE 1: Log & Categorize    │
+        │ PHASE 1: Garbage Collection  │
+        │ ├─ Check retention (30 days) │
+        │ └─ Purge old file entries    │
+        └──────────────┬───────────────┘
+                       │
+        ┌──────────────▼───────────────┐
+        │ PHASE 2: Log & Categorize    │
         │ ├─ Read ITEM.STATE           │
         │ ├─ Find entry in step1/2/3   │
         │ ├─ Move or update file       │
@@ -163,13 +179,13 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
         └──────────────┬───────────────┘
                        │
         ┌──────────────▼───────────────┐
-        │ PHASE 2: Wait (3 seconds)    │
-        │ (allow other concurrent runs)│
+        │ PHASE 3: Wait (3 seconds)    │
+        │ (allow concurrent runs limit)│
         └──────────────┬───────────────┘
                        │
         ┌──────────────▼──────────────────────┐
-        │ PHASE 3: Send Metrics via zabbix_   │
-        │ sender                              │
+        │ PHASE 4: Send Metrics via           │
+        │ zabbix_sender                       │
         │ ├─ count (integer)                  │
         │ ├─ log (text)                       │
         │ └─ For each: step1, step2, step3    │
@@ -197,7 +213,7 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
 
 ### File Structure
 
-```
+```text
 /var/lib/zabbix/unsupported-items/
 ├── logs/
 │   ├── unsupported_step1.txt  ← Items in first escalation window
@@ -211,26 +227,27 @@ Then link the template **Zabbix Unsupported Monitoring** to your **Zabbix Server
 
 Each line in the log files follows this format:
 
-```
+```text
 TIMESTAMP|HOST|ITEM_NAME|ITEM_KEY|STATE
 ```
 
 Example:
-```
+
+```text
 2026.02.09 18:35:22|web-01|CPU Usage|proc.cpu.util[1m]|Not supported
 2026.02.09 18:40:15|db-02|Memory Free|vm.memory.size[available]|Not supported
 ```
 
 ### State Transitions
 
-```
+```text
 NEW UNSUPPORTED → unsupported_step1.txt
                        ↓ (after 1st action trigger)
                   unsupported_step2.txt
                        ↓ (after 2nd action trigger)
                   unsupported_step3.txt
-                       ↓ (after 3rd action trigger)
-                  ← stays in step3 until RESOLVED
+                       ↓
+                  ← stays in step3 until RESOLVED or GC_DAYS (30d) threshold
 
 RESOLVED → Removed from all files immediately
 ```
@@ -273,7 +290,7 @@ RESOLVED → Removed from all files immediately
 
 Go to **Configuration → Templates → Zabbix Unsupported Monitoring → Macros** and adjust thresholds:
 
-```
+```text
 {$UNSUP_1}       = 2    # Alert if 2+ items in step1
 {$UNSUP_2}       = 1    # Alert if 1+ items persisting in step2
 {$UNSUP_3}       = 0    # Alert immediately if step3 items exist
@@ -288,7 +305,7 @@ Go to **Configuration → Templates → Zabbix Unsupported Monitoring → Macros
 
 Set low thresholds to catch issues early:
 
-```
+```text
 {$UNSUP_1}  = 1
 {$UNSUP_2}  = 0
 {$UNSUP_3}  = 0
@@ -301,7 +318,7 @@ Set low thresholds to catch issues early:
 
 Increase thresholds for environments with expected temporary issues:
 
-```
+```text
 {$UNSUP_1}  = 10
 {$UNSUP_2}  = 3
 {$UNSUP_3}  = 1
@@ -314,7 +331,7 @@ Increase thresholds for environments with expected temporary issues:
 
 Monitor specific host groups with stricter rules:
 
-```
+```text
 # Apply template only to "Critical-Servers" host group
 {$UNSUP_1}  = 0      # Any unsupported = alert
 {$UNSUP_2}  = 0
@@ -331,14 +348,16 @@ Monitor specific host groups with stricter rules:
 ### Handling >250 Unsupported Items
 
 **Why chunking?**
+
 - Prevents `Argument list too long` errors when passing large data to `zabbix_sender`
 - Avoids frontend performance issues (HTTP 500 errors) when displaying very long logs
 - Maintains data integrity even with 1000+ unsupported items
 
 **How it works:**
+
 - Each log metric (`step1[log]`, `step2[log]`, `step3[log]`) is sent in parts if >250 items
-- Parts are sent sequentially with 1-second delay between transmissions
-- Last part displayed in frontend includes header: `Part X/Y, row A-B - Total: N`
+- Parts are sent sequentially with a **0-second delay** (`CHUNK_DELAY=0`) to prevent Zabbix Server action timeouts (SIGTERM) when actions run close to their internal timeout
+- Last part displayed in frontend includes header: `Part X/Y, row A-B - Total: N` and a GC notice
 - Count metrics (`[count]`) always reflect the true total
 
 ---
@@ -409,12 +428,14 @@ Then check stderr output when running manually.
 ### Issue: Script Not Executing
 
 **Check script permissions:**
+
 ```bash
 ls -la /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 # Should show: -rwxr-xr-x zabbix zabbix
 ```
 
 **Fix:**
+
 ```bash
 sudo chmod 755 /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 sudo chown zabbix:zabbix /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
@@ -423,12 +444,14 @@ sudo chown zabbix:zabbix /usr/lib/zabbix/alertscripts/zbx_unsupported_monitor.sh
 ### Issue: Directory Permission Denied
 
 **Check directory ownership:**
+
 ```bash
 ls -ld /var/lib/zabbix/unsupported-items/logs
 # Should show: drwxr-xr-x zabbix zabbix
 ```
 
 **Fix:**
+
 ```bash
 sudo chown -R zabbix:zabbix /var/lib/zabbix/unsupported-items
 sudo chmod 755 /var/lib/zabbix/unsupported-items/logs
@@ -436,20 +459,24 @@ sudo chmod 755 /var/lib/zabbix/unsupported-items/logs
 
 ### Issue: zabbix_sender Fails
 
-**Verify zabbix_sender is installed:**
+**Verify `zabbix_sender` is installed:**
+
 ```bash
 which zabbix_sender
 /usr/bin/zabbix_sender
 ```
 
 **Test connectivity to Zabbix Server:**
+
 ```bash
 /usr/bin/zabbix_sender -z 127.0.0.1 -p 10051 -s "ZABBIX-SERVER" -k "test" -o "value"
 # Should return: sent: 1; skipped: 0; total: 1
 ```
 
 **Fix hostname mismatch in script:**
+
 Edit `zbx_unsupported_monitor.sh` and verify:
+
 ```bash
 readonly ZABBIX_HOSTNAME="ZABBIX-SERVER"  # Must match host name in Zabbix
 ```
@@ -457,21 +484,24 @@ readonly ZABBIX_HOSTNAME="ZABBIX-SERVER"  # Must match host name in Zabbix
 ### Issue: Items Not Receiving Data
 
 **Check if media type is working:**
+
 1. Go to **Administration → Media types → Script - Unsupported Items Monitor**
 2. Click **Test** and review output
 3. Check Zabbix Server logs: `tail -f /var/log/zabbix/zabbix_server.log | grep alert`
 
 **Verify trigger condition:**
+
 ```bash
 # Internal action should have trigger condition:
 # Event type = Item became unsupported
 ```
 
 **Check script output in action log:**
+
 1. Trigger an unsupported item manually
 2. Go to **Monitoring → Problems**
 3. Find the unsupported item
-4. Check **Event details** → **Action log**
+4. Check **Event details → Action log**
 
 ---
 
@@ -479,13 +509,15 @@ readonly ZABBIX_HOSTNAME="ZABBIX-SERVER"  # Must match host name in Zabbix
 
 ### Sample Dashboard Panel
 
-Create a new **Dashboard → Add widget → Data overview**
+Create a new **Dashboard → Add widget → Data overview**.
 
 **Data set:**
+
 - Host: `ZABBIX-SERVER` (or your Zabbix host)
 - Item: `zabbix.unsupported.step1[count]`
 
 **Panel options:**
+
 - Color scheme: Green (0) → Orange (1+) → Red (5+)
 - Refresh interval: 1m
 - Display value: Current value
@@ -493,6 +525,7 @@ Create a new **Dashboard → Add widget → Data overview**
 ### Custom Chart
 
 Add **Graph** widget:
+
 - Item: `zabbix.unsupported.step1[count]`
 - Show: Last 7 days
 - Graph type: Line
@@ -506,11 +539,11 @@ This shows escalation over time.
 ### Cleanup Old Entries
 
 The script automatically maintains:
-- **step1 log**: Entries moved to step2 after 1st trigger
-- **step2 log**: Entries moved to step3 after 2nd trigger
-- **step3 log**: Manual cleanup via recovery operations or external tools
 
-To manually clean old entries:
+- **step1/step2 logs**: Escalation moves entries between files as items age.
+- **step3 log**: Automated garbage collection (default `GC_DAYS=30`) removes stale entries after the retention period.
+
+To manually clean entries **before** GC triggers:
 
 ```bash
 # Backup first
@@ -549,10 +582,10 @@ The script uses **file-based locking** (`flock`) to prevent race conditions:
 
 ```bash
 exec 9>"$lock_file"
-flock -x 9  # Exclusive lock
+flock -w 5 -x 9  # Exclusive lock with 5s timeout
 ```
 
-**Why?** If multiple unsupported items trigger simultaneously, the lock ensures sequential file updates.
+**Why?** If multiple unsupported items trigger simultaneously, the lock ensures sequential file updates. The 5-second timeout prevents indefinite script hangs (deadlocks) if a stale lock file or long-running process blocks access.
 
 ### State Normalization
 
@@ -566,24 +599,25 @@ The script accepts flexible state values:
 
 ### Timestamp Handling
 
-- **If EVENT.TIME and EVENT.DATE provided**: Uses `{EVENT.DATE} {EVENT.TIME}` format
-- **If empty/missing**: Falls back to current system time
-- **Format**: `YYYY.MM.DD HH:MM:SS`
+- **If `EVENT.TIME` and `EVENT.DATE` are provided**: Uses `{EVENT.DATE} {EVENT.TIME}` format.
+- **If empty/missing**: Falls back to current system time.
+- **Format**: `YYYY.MM.DD HH:MM:SS`.
 
 ### Metric Output Format
 
 Log entries are reformatted for readability before sending to Zabbix:
 
 **Stored in file:**
-```
+
+```text
 2026.02.09 18:30:45|web-01|CPU Usage|proc.cpu.util[1m]|Not supported
 ```
 
 **Sent to Zabbix (log metric):**
-```
+
+```text
 2026.02.09 18:30:45 - HOST: web-01 ITEM: CPU Usage KEY: proc.cpu.util[1m] STATE: Not supported
 ```
-
 
 ---
 
