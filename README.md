@@ -50,6 +50,12 @@ Personal collection of Zabbix templates, configurations, best practices and moni
   Link: https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Networking/Juniper/Led%20Status%20Discovery/juniper_mx204_led_template.yaml  
   Description: Discovery-based monitoring for per-class QoS throughput on Palo Alto firewalls using PAN-OS API.
 
+- **Template - PanOS-API - HA Sync Status**  
+  Path: `TEMPLATES/Networking/PaloAlto/PanOS-API-HA`  
+  Template file: `Template_PanOS-API_QoS_V.x.x.yaml`  
+  Link: https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Networking/Juniper/Led%20Status%20Discovery/juniper_mx204_led_template.yaml   
+  Description: Template for monitoring Palo Alto Networks (PAN-OS) High Availability synchronization status via XML API.
+  
 ### SMB
 
 - **SMB**  
