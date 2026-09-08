@@ -55,6 +55,14 @@ Personal collection of Zabbix templates, configurations, best practices and moni
   Template file: `Template_PanOS-API_QoS_V.x.x.yaml`  
   Link: https://github.com/N1k0droid/Zabbix-Collection/blob/main/TEMPLATES/Networking/PaloAlto/PanOS-API-HA/Template_PanOS-API-HA_status_info.yaml   
   Description: Template for monitoring Palo Alto Networks (PAN-OS) High Availability synchronization status via XML API.
+
+### Log Management / Graylog
+
+- **Graylog by HTTP API**  
+  Path: `TEMPLATES/Graylog`  
+  Template file: `Template-Graylog-by-REST-API.yaml`  
+  Link: [https://github.com/N1k0droid/Zabbix-Collection/tree/main/TEMPLATES/Graylog](https://github.com/N1k0droid/Zabbix-Collection/tree/main/TEMPLATES/Graylog)  
+  Description: Native monitoring of Graylog via REST API — buffers, journal, JVM, throughput/traffic, application logs, GELF, event processors, scheduler, indexer health, and optional stream/stream-rule discovery. See template README for setup, macro configuration, and Graylog user/role provisioning.
   
 ### SMB
 
