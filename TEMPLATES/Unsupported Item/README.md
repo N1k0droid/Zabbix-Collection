@@ -1,5 +1,6 @@
 # Zabbix Unsupported Items Monitor
 
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
 [![Version](https://img.shields.io/badge/version-3.1.4-blue.svg)](https://github.com/N1k0droid/zabbix-unsupported-items-monitor)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
