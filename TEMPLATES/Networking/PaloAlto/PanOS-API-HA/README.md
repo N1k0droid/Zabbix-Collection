@@ -1,5 +1,7 @@
 # Template - PanOS-API - HA Sync Status
 
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
+
 Template for monitoring Palo Alto Networks (PAN-OS) High Availability synchronization status via XML API.
 
 ## Scope
