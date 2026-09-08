@@ -1,5 +1,6 @@
 # Template - PanOS-API - QoS (Dynamic Baseline)
 
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
 [![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)](https://github.com/N1k0droid/zabbix-panos-qos)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0%2B-orange.svg)](https://www.zabbix.com)
