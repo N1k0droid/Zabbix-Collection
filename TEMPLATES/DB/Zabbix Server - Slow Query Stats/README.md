@@ -1,3 +1,5 @@
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
+
 # Zabbix 7.0 Slow Query Monitoring Templates
 
 Comprehensive database slow query monitoring templates for **Zabbix 7.0+** using **Zabbix Agent**.
