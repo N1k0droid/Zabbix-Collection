@@ -1,0 +1,2123 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 7aa3d4a70f2042e9b49b8f269bf0f8ec
+      name: Templates/Applications
+  templates:
+    - uuid: 29169d4f84ab4b158a13ebc72e5f4848
+      template: 'Template - Graylog Monitoring by HTTP API'
+      name: 'Template - Graylog Monitoring by HTTP API'
+      description: |
+        Monitors Graylog through a single HTTP API request to the system metrics endpoint. The template collects application, buffer, journal, JVM, multi-version scheduler discovery, throughput, logging, indexing, pipeline, and processing metrics. Low-level discovery detects Graylog inputs, aggregation event processors, and a fixed allowlist of scheduler metrics. Input and event processor discovery rules are capped at 100 entities each. Scheduler discovery creates at most seven metric items. No discovery enumerates arbitrary API metric names. Optional stream and stream rule discovery rules are disabled by empty allowlist macros and are hard-limited to 20 configured entities each.
+        
+        Required configuration:
+          - {$GRAYLOG.ENDPOINT}: Graylog API hostname or IP address.
+          - {$GRAYLOG.API.SCHEME}: API protocol, either http or https. Default: https.
+          - {$GRAYLOG.API.PORT}: Graylog REST API port. Default: 9000.
+          - {$GRAYLOG.API.PATH}: Graylog metrics endpoint path. Default: /api/system/metrics.
+          - {$GRAYLOG.API.USER}: Graylog monitoring user with permission to read system metrics.
+          - {$GRAYLOG.API.PASSWORD}: Password for the Graylog monitoring user.
+          - {$GRAYLOG.API.INTERVAL}: Metrics polling interval. Default: 1m.
+          - {$GRAYLOG.API.TIMEOUT}: HTTP request timeout. Default: 15s.
+          - {$GRAYLOG.TCP.PORT}: TCP port used for the service availability check. Default: 9000.
+        
+        The Graylog API user must use Basic authentication and have access to the system metrics endpoint.
+        
+        The API URL is built as follows:
+        {$GRAYLOG.API.SCHEME}://{$GRAYLOG.ENDPOINT}:{$GRAYLOG.API.PORT}{$GRAYLOG.API.PATH}
+        
+        HTTPS certificate and hostname verification are enabled. For HTTP connections, set {$GRAYLOG.API.SCHEME} to http. Optional or version-specific metrics that are not exposed by the monitored Graylog instance are discarded without making the related items unsupported.
+      vendor:
+        name: N1k0droid
+        version: '6.0'
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 6c2b44f11123443291d6541d3c09e536
+          name: 'Graylog API status'
+          type: DEPENDENT
+          key: graylog.api.status
+          delay: '0'
+          history: 7d
+          description: 'Shows whether the Graylog metrics API returned a valid JSON payload.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'if (value === ''ERROR_STATE'') return 0; try { var d = JSON.parse(value); return (d && typeof d === ''object'' && !Array.isArray(d)) ? 1 : 0; } catch (e) { return 0; }'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: api
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: c65936ca0feb441c826d74fb8b5e7f35
+              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.api.status)=0'
+              name: 'Graylog: API metrics payload is invalid'
+              priority: HIGH
+              description: 'Alerts when the Graylog metrics API returns an empty, HTML, invalid, or unexpected payload.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 8b1f82eff5e24e538ef7d65e65d4eb34
+          name: 'Input buffer utilization'
+          type: DEPENDENT
+          key: graylog.buffer.input.utilization
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Current input buffer slots in use.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'var d=JSON.parse(value),g=d.gauges||{},s=g[''org.graylog2.buffers.input.size''],u=g[''org.graylog2.buffers.input.usage''];if(!s||!u||s.value<=0)throw ''Metric unavailable'';return 100*u.value/s.value;'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: buffers
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 403d4582038e4e5ab74c28ce2ae5c61e
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              name: 'Graylog: input buffer utilization is critical'
+              priority: HIGH
+              description: 'Alerts when input buffer utilization is critical.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 7c1628ffbd394243b2f73e7bf3388d8c
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              name: 'Graylog: input buffer utilization is high'
+              priority: WARNING
+              description: 'Alerts when input buffer utilization is high.'
+              dependencies:
+                - name: 'Graylog: input buffer utilization is critical'
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 48e73be5c3a1476e90acadab495f6b05
+          name: 'Output buffer utilization'
+          type: DEPENDENT
+          key: graylog.buffer.output.utilization
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Current output buffer slots in use.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'var d=JSON.parse(value),g=d.gauges||{},s=g[''org.graylog2.buffers.output.size''],u=g[''org.graylog2.buffers.output.usage''];if(!s||!u||s.value<=0)throw ''Metric unavailable'';return 100*u.value/s.value;'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: buffers
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 8f280939f03646e7b54e390874d738b3
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              name: 'Graylog: output buffer utilization is critical'
+              priority: HIGH
+              description: 'Alerts when output buffer utilization is critical.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 8b661d5d77b041f0a71b78e6349da1d1
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              name: 'Graylog: output buffer utilization is high'
+              priority: WARNING
+              description: 'Alerts when output buffer utilization is high.'
+              dependencies:
+                - name: 'Graylog: output buffer utilization is critical'
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 2e0fa8d8e6fc4832ac948c194ef7be94
+          name: 'Process buffer utilization'
+          type: DEPENDENT
+          key: graylog.buffer.process.utilization
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Current process buffer slots in use.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'var d=JSON.parse(value),g=d.gauges||{},s=g[''org.graylog2.buffers.process.size''],u=g[''org.graylog2.buffers.process.usage''];if(!s||!u||s.value<=0)throw ''Metric unavailable'';return 100*u.value/s.value;'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: buffers
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 1d8a28d703c04671bbd2e7a6b0445c93
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              name: 'Graylog: process buffer utilization is critical'
+              priority: HIGH
+              description: 'Alerts when process buffer utilization is critical.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 0ddaaca391a8499bafe0dadc8985f1ef
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              name: 'Graylog: process buffer utilization is high'
+              priority: WARNING
+              description: 'Alerts when process buffer utilization is high.'
+              dependencies:
+                - name: 'Graylog: process buffer utilization is critical'
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 9da4f608f8864a8985883022f6946a1d
+          name: 'Elasticsearch output failures'
+          type: DEPENDENT
+          key: graylog.elasticsearch.failures
+          delay: '0'
+          description: 'Cumulative indexing output failures.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.graylog2.outputs.ElasticSearchOutput.failures"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: ba817a6f5bf3446bacd0d6ad10874f02
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.failures)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.failures)<1000000'
+              name: 'Graylog: New elasticsearch output failures'
+              priority: HIGH
+              description: 'Alerts when new elasticsearch output failures.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: ff9f8cb464ca4076aef577fdee355abc
+          name: 'Indexer buffer flush failures'
+          type: DEPENDENT
+          key: graylog.elasticsearch.flush_failures
+          delay: '0'
+          description: 'Cumulative indexer buffer flush failures. Supports current and legacy Graylog output metric names.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var sections = [d.meters || {}, d.counters || {}];
+                  var candidates = [
+                      'org.graylog2.outputs.BatchedMessageFilterOutput.bufferFlushFailures',
+                      'org.graylog2.outputs.BlockingBatchedESOutput.bufferFlushFailures'
+                  ];
+                  
+                  for (var i = 0; i < candidates.length; i++) {
+                      for (var j = 0; j < sections.length; j++) {
+                          var metric = sections[j][candidates[i]];
+                          if (!metric) continue;
+                          if (typeof metric.count !== 'undefined') return metric.count;
+                          if (typeof metric.value !== 'undefined') return metric.value;
+                      }
+                  }
+                  
+                  throw 'Indexer buffer flush failure metric is unavailable';
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 2a74b89249b44d37ae81fa7328e36f8a
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.flush_failures)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.flush_failures)<1000000'
+              name: 'Graylog: New indexer buffer flush failures'
+              priority: HIGH
+              description: 'Alerts when the indexer reports new buffer flush failures.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: c0a5a7caa5a54996b84cfb969b979c4a
+          name: 'Elasticsearch process time p95'
+          type: DEPENDENT
+          key: graylog.elasticsearch.process_time.p95
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          description: '95th percentile indexing output latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["timers"]["org.graylog2.outputs.ElasticSearchOutput.processTime"]["p95"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: f3d81f841a9b422286fbdca0911d6671
+          name: 'GELF duplicate chunks'
+          type: DEPENDENT
+          key: graylog.gelf.chunks.duplicate
+          delay: '0'
+          description: 'Cumulative duplicate GELF chunks.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["counters"]["org.graylog2.inputs.codecs.GelfChunkAggregator.duplicate-chunks"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: inputs
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: f436fa1430124fdfa914838319f2f80b
+          name: 'GELF expired messages'
+          type: DEPENDENT
+          key: graylog.gelf.chunks.expired_messages
+          delay: '0'
+          description: 'Cumulative expired GELF messages.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["counters"]["org.graylog2.inputs.codecs.GelfChunkAggregator.expired-messages"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: inputs
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 53074bd90f094a30a63cb879e688d81d
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.gelf.chunks.expired_messages)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.gelf.chunks.expired_messages)<1000000'
+              name: 'Graylog: New gelf expired messages'
+              priority: WARNING
+              description: 'Alerts when new gelf expired messages.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 52ee76ce671945eb8a2f4482740250df
+          name: 'Indexer failure queue'
+          type: DEPENDENT
+          key: graylog.indexer.failures.queue
+          delay: '0'
+          description: 'Current indexer failure queue size.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.periodical.IndexFailuresPeriodical.queueSize"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 3689dba1cd6747fb8b824f06ed2f7d16
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.failures.queue,5m)>{$GRAYLOG.INDEXER.FAILURE.QUEUE.MAX}'
+              name: 'Graylog: Indexer failure queue is not empty'
+              priority: HIGH
+              description: 'Alerts when the indexer failure queue remains above the configured threshold for five minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: d8f86497d6df45e48108b61ccb20d40e
+          name: 'Graylog indexer cluster health: Get data'
+          type: HTTP_AGENT
+          key: graylog.indexer.health.raw
+          delay: '{$GRAYLOG.INDEXER.HEALTH.INTERVAL}'
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          authtype: BASIC
+          username: '{$GRAYLOG.API.USER}'
+          password: '{$GRAYLOG.API.PASSWORD}'
+          description: 'Retrieves the Graylog indexer cluster health payload.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'var s=String(value).trim(); if (!s || s.charAt(0)===''<'') throw ''Invalid response''; var d=JSON.parse(s); if (!d.status || !d.shards || typeof d.shards!==''object'') throw ''Unexpected indexer health payload''; return s;'
+          timeout: '{$GRAYLOG.API.TIMEOUT}'
+          url: '{$GRAYLOG.API.SCHEME}://{$GRAYLOG.ENDPOINT}:{$GRAYLOG.API.PORT}{$GRAYLOG.INDEXER.HEALTH.PATH}'
+          headers:
+            - name: Accept
+              value: application/json
+          verify_peer: 'YES'
+          verify_host: 'YES'
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: a370ec28b5ac40dda7eb838d5b3dc164
+          name: 'Graylog indexer cluster health status'
+          type: DEPENDENT
+          key: graylog.indexer.health.status
+          delay: '0'
+          description: 'Numeric indexer health status: 2 is green, 1 is yellow, 0 is red, and -1 is invalid or unavailable.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - 'if(value===''ERROR_STATE'')return -1;try{var s=JSON.parse(value).status;if(s===''green'')return 2;if(s===''yellow'')return 1;if(s===''red'')return 0;return -1;}catch(e){return -1;}'
+          master_item:
+            key: graylog.indexer.health.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 5338fce0a3ef404fbfbe2ee722ebb7ab
+              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=-1'
+              name: 'Graylog: Indexer cluster health cannot be retrieved'
+              priority: HIGH
+              description: 'Alerts when the indexer health payload is unavailable or invalid.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 26d20cf0b61a4199b170587978c38813
+              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=0'
+              name: 'Graylog: Indexer cluster health is red'
+              priority: HIGH
+              description: 'Alerts when the indexer cluster reports red health.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 41937f975de249199ac1f970025fca85
+              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=1'
+              name: 'Graylog: Indexer cluster health is yellow'
+              priority: WARNING
+              description: 'Alerts when the indexer cluster reports yellow health.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 91faee8e7e2349eb9e8f6ad4b06f51bd
+          name: 'Graylog indexer shards active'
+          type: DEPENDENT
+          key: graylog.indexer.shards.active
+          delay: '0'
+          description: 'Current number of active indexer shards.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.shards.active
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.indexer.health.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 527048a3aed24929aa25893bd4af874f
+          name: 'Graylog indexer shards initializing'
+          type: DEPENDENT
+          key: graylog.indexer.shards.initializing
+          delay: '0'
+          description: 'Current number of initializing indexer shards.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.shards.initializing
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.indexer.health.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: cd54e701896f4913ad0d8deec8aec5f3
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.initializing,10m)>{$GRAYLOG.INDEXER.SHARDS.INITIALIZING.MAX}'
+              name: 'Graylog: Indexer cluster has initializing shards'
+              priority: WARNING
+              description: 'Alerts when initializing indexer shards remain above the configured threshold for ten minutes.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: d3b61b8f0ce04a5f89375199b68e32d3
+          name: 'Graylog indexer shards relocating'
+          type: DEPENDENT
+          key: graylog.indexer.shards.relocating
+          delay: '0'
+          description: 'Current number of relocating indexer shards.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.shards.relocating
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.indexer.health.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 6fcc9502dc8f402daf14fe8cfae423c7
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.relocating,10m)>{$GRAYLOG.INDEXER.SHARDS.RELOCATING.MAX}'
+              name: 'Graylog: Indexer cluster has relocating shards'
+              priority: WARNING
+              description: 'Alerts when relocating indexer shards remain above the configured threshold for ten minutes.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 6964104b48834754ada2e08396fcfe76
+          name: 'Graylog indexer shards unassigned'
+          type: DEPENDENT
+          key: graylog.indexer.shards.unassigned
+          delay: '0'
+          description: 'Current number of unassigned indexer shards.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.shards.unassigned
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.indexer.health.raw
+          tags:
+            - tag: component
+              value: indexing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: cf707e1bfa6342fc979a6a7048167c5b
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.unassigned,5m)>{$GRAYLOG.INDEXER.SHARDS.UNASSIGNED.MAX}'
+              name: 'Graylog: Indexer cluster has unassigned shards'
+              priority: HIGH
+              description: 'Alerts when unassigned indexer shards remain above the configured threshold for five minutes.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 15b1f7b8c22440c9ab346f27a3d63ece
+          name: 'Journal append rate'
+          type: DEPENDENT
+          key: graylog.journal.append_rate
+          delay: '0'
+          value_type: FLOAT
+          units: msg/s
+          description: 'Current journal append rate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.journal.append.1-sec-rate"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: dd88ef3471a84936951a328d64a35612
+          name: 'Journal discarded messages'
+          type: DEPENDENT
+          key: graylog.journal.discarded
+          delay: '0'
+          description: 'Cumulative discarded journal writes.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.graylog2.shared.journal.KafkaJournal.writeDiscardedMessages"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 43f5d724c8554cfaa9a772db5cbca274
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.journal.discarded)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.journal.discarded)<1000000'
+              name: 'Graylog: Messages discarded by journal'
+              priority: HIGH
+              description: 'Alerts when messages discarded by journal.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 59ec5601a0e944d19081c6caae52ce31
+          name: 'Journal uncommitted entries'
+          type: DEPENDENT
+          key: graylog.journal.entries_uncommitted
+          delay: '0'
+          description: 'Messages not yet processed from the journal.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.journal.entries-uncommitted"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: cbcd37db0f59424c9c5b15a9b1505293
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.entries_uncommitted,10m)>{$GRAYLOG.JOURNAL.ENTRIES.WARN}'
+              name: 'Graylog: Journal backlog is high'
+              priority: WARNING
+              description: 'Alerts when uncommitted journal entries remain above the configured threshold for ten minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 7b8f30193e1d403683cf07eeef9944fd
+          name: 'Journal read rate'
+          type: DEPENDENT
+          key: graylog.journal.read_rate
+          delay: '0'
+          value_type: FLOAT
+          units: msg/s
+          description: 'Current journal read rate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.journal.read.1-sec-rate"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 52ff79dabda34d86b653f674583b156f
+          name: 'Journal uncommitted messages'
+          type: DEPENDENT
+          key: graylog.journal.uncommitted_messages
+          delay: '0'
+          description: 'Messages not yet committed in the journal.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.shared.journal.KafkaJournal.uncommittedMessages"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 8cfe96b267e240759606b887eff24cf9
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.uncommitted_messages,10m)>{$GRAYLOG.JOURNAL.UNCOMMITTED.WARN}'
+              name: 'Graylog: Journal has many uncommitted messages'
+              priority: WARNING
+              description: 'Alerts when uncommitted journal messages remain above the configured threshold for ten minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 567f3546100a41eab25a510071ba6b6d
+          name: 'Journal unflushed messages'
+          type: DEPENDENT
+          key: graylog.journal.unflushed
+          delay: '0'
+          description: 'Messages awaiting a journal disk flush.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.shared.journal.KafkaJournal.unflushedMessages"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 7eb45f338d754b5fbf8329789233c8c3
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.unflushed,10m)>{$GRAYLOG.JOURNAL.UNFLUSHED.WARN}'
+              name: 'Graylog: Journal has many unflushed messages'
+              priority: WARNING
+              description: 'Alerts when journal messages awaiting a disk flush remain above the configured threshold for ten minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 806c8a61937c43f5b891a2b041d5e568
+          name: 'Journal utilization'
+          type: DEPENDENT
+          key: graylog.journal.utilization
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Current journal utilization ratio.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.journal.utilization-ratio"]["value"]'
+              error_handler: DISCARD_VALUE
+            - type: MULTIPLIER
+              parameters:
+                - '100'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: de2af98f3eba49f0bd90994a0503a606
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
+              name: 'Graylog: journal utilization is critical'
+              priority: HIGH
+              description: 'Alerts when journal utilization is critical.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 872b7194ea8a421b8285f72101c8b40e
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,10m)>{$GRAYLOG.JOURNAL.WARN}'
+              name: 'Graylog: journal utilization is high'
+              priority: WARNING
+              description: 'Alerts when journal utilization is high.'
+              dependencies:
+                - name: 'Graylog: journal utilization is critical'
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 2545d91855d2497db3486cd64084df8f
+          name: 'Journal write time p95'
+          type: DEPENDENT
+          key: graylog.journal.write_time.p95
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          description: '95th percentile journal write latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["timers"]["org.graylog2.shared.journal.KafkaJournal.writeTime"]["p95"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: journal
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 9cf841609ff249b3a26639c008767b92
+          name: 'JVM direct buffer used'
+          type: DEPENDENT
+          key: graylog.jvm.direct_buffer.used
+          delay: '0'
+          units: B
+          description: 'Current JVM direct buffer memory.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.buffers.direct.used"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 8ace6ddbbd8244ae846ae593fcea688f
+          name: 'JVM heap maximum'
+          type: DEPENDENT
+          key: graylog.jvm.heap.max
+          delay: '0'
+          units: B
+          description: 'Maximum JVM heap memory.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.memory.heap.max"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: e6e00e4f8a7c45579ec659df350c2863
+          name: 'JVM heap usage'
+          type: DEPENDENT
+          key: graylog.jvm.heap.usage
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Current JVM heap utilization ratio.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.memory.heap.usage"]["value"]'
+              error_handler: DISCARD_VALUE
+            - type: MULTIPLIER
+              parameters:
+                - '100'
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: d2f3f417ce9e4fa48f03fd60bca46847
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
+              name: 'Graylog: jvm heap usage is critical'
+              priority: HIGH
+              description: 'Alerts when jvm heap usage is critical.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: fd7083c42491420da3c24efc7879135d
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,10m)>{$GRAYLOG.JVM.HEAP.WARN}'
+              name: 'Graylog: jvm heap usage is high'
+              priority: WARNING
+              description: 'Alerts when jvm heap usage is high.'
+              dependencies:
+                - name: 'Graylog: jvm heap usage is critical'
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 1258653ccf7345a3a520e08eb83951e5
+          name: 'JVM heap used'
+          type: DEPENDENT
+          key: graylog.jvm.heap.used
+          delay: '0'
+          units: B
+          description: 'Current JVM heap used memory.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.memory.heap.used"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 1d9eca4ccb0c447b8db4fbc67e053a06
+          name: 'JVM blocked threads'
+          type: DEPENDENT
+          key: graylog.jvm.threads.blocked
+          delay: '0'
+          description: 'Current blocked JVM threads.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.threads.blocked.count"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 9a700b37d97d4f9ebf3d6c4007c263f1
+              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.threads.blocked,5m)>{$GRAYLOG.JVM.BLOCKED.MAX}'
+              name: 'Graylog: JVM blocked thread count is high'
+              priority: WARNING
+              description: 'Alerts when jVM blocked thread count is high.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 7a1bef6fa7ad43a98c4d9665dd73a67a
+          name: 'JVM thread count'
+          type: DEPENDENT
+          key: graylog.jvm.threads.count
+          delay: '0'
+          description: 'Current live JVM thread count.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.threads.count"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 4a279cc595524fd4a1427734efcc069c
+          name: 'JVM deadlocked threads'
+          type: DEPENDENT
+          key: graylog.jvm.threads.deadlocked
+          delay: '0'
+          description: 'Current JVM deadlocked threads.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.threads.deadlock.count"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: b914a913067b4f06909c3f98c74b291c
+              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.jvm.threads.deadlocked)>0'
+              name: 'Graylog: JVM deadlock detected'
+              priority: DISASTER
+              description: 'Alerts when jVM deadlock detected.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 74f8e9ae426b4c7bbfc2eead590f0886
+          name: 'JVM runnable threads'
+          type: DEPENDENT
+          key: graylog.jvm.threads.runnable
+          delay: '0'
+          description: 'Current runnable JVM threads.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["jvm.threads.runnable.count"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: jvm
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: f85acf01315a4a0db4fc87fcd96314d6
+          name: 'Graylog DEBUG log events'
+          type: DEPENDENT
+          key: graylog.log.debug
+          delay: '0'
+          description: 'Cumulative DEBUG log events.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.apache.logging.log4j.core.Appender.debug"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: logs
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 916e547069ad4e99871025cdaccdfd5b
+          name: 'Graylog log errors'
+          type: DEPENDENT
+          key: graylog.log.errors
+          delay: '0'
+          description: 'Cumulative ERROR log events.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.apache.logging.log4j.core.Appender.error"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: logs
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 4cea584e945d47fc981cba9e99215021
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.errors)>{$GRAYLOG.LOG.ERRORS.MAX} and change(/Template - Graylog Monitoring by HTTP API/graylog.log.errors)<1000000'
+              name: 'Graylog: Multiple new application errors'
+              priority: WARNING
+              description: 'Alerts when multiple new application errors.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: ca2d819ea9fb4794b0aab2e6b2de0561
+          name: 'Graylog fatal log events'
+          type: DEPENDENT
+          key: graylog.log.fatal
+          delay: '0'
+          description: 'Cumulative FATAL log events.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.apache.logging.log4j.core.Appender.fatal"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: logs
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 1e13f8f87ed64449bdee81fd6f54e0e5
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.fatal)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.log.fatal)<1000000'
+              name: 'Graylog: New fatal application events'
+              priority: HIGH
+              description: 'Alerts when new fatal application events.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 4f1be14d419e486fbfd00cdde6853e5e
+          name: 'Graylog INFO log events'
+          type: DEPENDENT
+          key: graylog.log.info
+          delay: '0'
+          description: 'Cumulative INFO log events.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.apache.logging.log4j.core.Appender.info"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: logs
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 433d1f59f6014df8b3398077cc488310
+          name: 'Graylog WARN log events'
+          type: DEPENDENT
+          key: graylog.log.warn
+          delay: '0'
+          description: 'Cumulative WARN log events.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.apache.logging.log4j.core.Appender.warn"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: logs
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 5cd7324938cf47c7b77fb95f04907b1c
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.warn)>{$GRAYLOG.LOG.WARN.MAX} and change(/Template - Graylog Monitoring by HTTP API/graylog.log.warn)<1000000'
+              name: 'Graylog: Multiple new application warnings'
+              priority: WARNING
+              description: 'Alerts when new WARN log events between samples exceed the configured threshold.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 12e3b41f8b794d76bf53437a3f0802cb
+          name: 'Graylog: Get metrics'
+          type: HTTP_AGENT
+          key: graylog.metrics.raw
+          delay: '{$GRAYLOG.API.INTERVAL}'
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          authtype: BASIC
+          username: '{$GRAYLOG.API.USER}'
+          password: '{$GRAYLOG.API.PASSWORD}'
+          description: 'Retrieves the Graylog operational metrics payload.'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var s;
+                  if (value === null || typeof value === 'undefined') throw 'Empty response';
+                  s = String(value).trim();
+                  if (s === '') throw 'Empty response';
+                  if (s.charAt(0) === '<' || /<!doctype\s+html/i.test(s) || /<html[\s>]/i.test(s)) throw 'HTML response';
+                  var d;
+                  try { d = JSON.parse(s); } catch (e) { throw 'Invalid JSON'; }
+                  if (d === null || typeof d !== 'object' || Array.isArray(d)) throw 'JSON root is not an object';
+                  if (!Object.prototype.hasOwnProperty.call(d, 'gauges') && !Object.prototype.hasOwnProperty.call(d, 'meters') && !Object.prototype.hasOwnProperty.call(d, 'counters') && !Object.prototype.hasOwnProperty.call(d, 'timers')) throw 'Graylog metric sections are missing';
+                  return s;
+          timeout: '{$GRAYLOG.API.TIMEOUT}'
+          url: '{$GRAYLOG.API.SCHEME}://{$GRAYLOG.ENDPOINT}:{$GRAYLOG.API.PORT}{$GRAYLOG.API.PATH}'
+          headers:
+            - name: Accept
+              value: application/json
+          verify_peer: 'YES'
+          verify_host: 'YES'
+          tags:
+            - tag: component
+              value: raw
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 537466d668164b4ebbb21b2282346a55
+          name: 'Pipeline execution time p95'
+          type: DEPENDENT
+          key: graylog.pipeline.execution_time.p95
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          description: '95th percentile pipeline execution latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["timers"]["org.graylog.plugins.pipelineprocessor.processors.PipelineInterpreter.executionTime"]["p95"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: processing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 4f954c78c5994285ba739744a85c7a7c
+          name: 'Invalid timestamps'
+          type: DEPENDENT
+          key: graylog.processing.invalid_timestamps
+          delay: '0'
+          description: 'Cumulative messages with invalid timestamps.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["meters"]["org.graylog2.indexer.messages.Messages.invalid-timestamps"]["count"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: processing
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 2ab070d218c84824b06e1a5771bc5daf
+              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.processing.invalid_timestamps)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.processing.invalid_timestamps)<1000000'
+              name: 'Graylog: New invalid timestamps'
+              priority: WARNING
+              description: 'Alerts when new invalid timestamps.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: e3649de20a5b4119a0d8bfeb0a8d6a57
+          name: 'Process buffer decode time p95'
+          type: DEPENDENT
+          key: graylog.process_buffer.decode_time.p95
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          description: '95th percentile message decode latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["timers"]["org.graylog2.shared.buffers.ProcessBuffer.decodeTime"]["p95"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: processing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 62804520548240c796d06c2f3c38ccb3
+          name: 'Process buffer process time p95'
+          type: DEPENDENT
+          key: graylog.process_buffer.process_time.p95
+          delay: '0'
+          value_type: FLOAT
+          units: s
+          description: '95th percentile message processing latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["timers"]["org.graylog2.shared.buffers.processors.ProcessBufferProcessor.processTime"]["p95"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: processing
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 4a501baf33e44647a1c03cd57380929f
+          name: 'Input throughput'
+          type: DEPENDENT
+          key: graylog.throughput.input
+          delay: '0'
+          value_type: FLOAT
+          units: msg/s
+          description: 'Current input message rate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.throughput.input.1-sec-rate"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: throughput
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: a4a05496dd17479498c29101ba6446c0
+          name: 'Output throughput'
+          type: DEPENDENT
+          key: graylog.throughput.output
+          delay: '0'
+          value_type: FLOAT
+          units: msg/s
+          description: 'Current output message rate.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["gauges"]["org.graylog2.throughput.output.1-sec-rate"]["value"]'
+              error_handler: DISCARD_VALUE
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: throughput
+            - tag: template
+              value: Graylog-HTTP-API
+        - uuid: 99f0583e76fe4ca792373d7ac483689f
+          name: 'Graylog traffic input rate'
+          type: DEPENDENT
+          key: graylog.traffic.input.rate
+          delay: '0'
+          value_type: FLOAT
+          units: Bps
+          description: 'Per-second byte rate calculated from the cumulative Graylog input traffic counter.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["counters"]["org.graylog2.traffic.input"]["count"]'
+              error_handler: DISCARD_VALUE
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: traffic
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 45a6d192da03425486314f6043d5ff69
+              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
+              name: 'Graylog: input traffic decreased sharply'
+              priority: WARNING
+              description: 'Alerts when the short-period average input traffic rate falls below the baseline average by the configured decrease percentage.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: f2ee7d87843244f6a905d30d9cd62768
+              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
+              name: 'Graylog: input traffic increased sharply'
+              priority: WARNING
+              description: 'Alerts when the short-period average input traffic rate exceeds the baseline average by the configured increase percentage.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 68a725c2eea44598a65efaad0c236286
+          name: 'Graylog traffic output rate'
+          type: DEPENDENT
+          key: graylog.traffic.output.rate
+          delay: '0'
+          value_type: FLOAT
+          units: Bps
+          description: 'Per-second byte rate calculated from the cumulative Graylog output traffic counter.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$["counters"]["org.graylog2.traffic.output"]["count"]'
+              error_handler: DISCARD_VALUE
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          master_item:
+            key: graylog.metrics.raw
+          tags:
+            - tag: component
+              value: traffic
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 8bc368e009e34f1abc84a2ee3245a15f
+              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
+              name: 'Graylog: output traffic decreased sharply'
+              priority: WARNING
+              description: 'Alerts when the short-period average output traffic rate falls below the baseline average by the configured decrease percentage.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: dfc79026a38c425db9a2fc81a675898f
+              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
+              name: 'Graylog: output traffic increased sharply'
+              priority: WARNING
+              description: 'Alerts when the short-period average output traffic rate exceeds the baseline average by the configured increase percentage.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+        - uuid: 83cc8b97ca204135a5957f8c3a39d650
+          name: 'Graylog: Service status'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp,{HOST.CONN},{$GRAYLOG.TCP.PORT}]'
+          delay: '{$GRAYLOG.API.INTERVAL}'
+          history: 7d
+          description: 'Checks whether the configured Graylog TCP port accepts connections.'
+          tags:
+            - tag: component
+              value: network
+            - tag: template
+              value: Graylog-HTTP-API
+          triggers:
+            - uuid: 979d8ba8654e495f87a02a78041b44a3
+              expression: 'max(/Template - Graylog Monitoring by HTTP API/net.tcp.service[tcp,{HOST.CONN},{$GRAYLOG.TCP.PORT}],3m)=0'
+              name: 'Graylog: Service is unavailable on port {$GRAYLOG.TCP.PORT}'
+              priority: HIGH
+              description: 'Alerts when service is unavailable on port {$GRAYLOG.TCP.PORT}.'
+              tags:
+                - tag: scope
+                  value: performance
+                - tag: template
+                  value: Graylog-HTTP-API
+      discovery_rules:
+        - uuid: 231caf13b24f493fb6776cb4adb562cf
+          name: 'Aggregation event processor discovery'
+          type: DEPENDENT
+          key: graylog.eventprocessor.discovery
+          delay: '0'
+          description: 'Discovers valid aggregation event processor IDs from a fixed metric family. Creates no more than 100 processor entities.'
+          item_prototypes:
+            - uuid: 7c86b479f0194e0f91adf2d1a7217c2c
+              name: 'Event processor [{#PROCESSOR.ID}]: Exceptions'
+              type: DEPENDENT
+              key: 'graylog.eventprocessor.exceptions[{#PROCESSOR.ID}]'
+              delay: '0'
+              description: 'Cumulative execution exceptions.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["counters"]["org.graylog.events.processor.aggregation.AggregationEventProcessor.{#PROCESSOR.ID}.execution_exception"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.eventprocessor.raw[{#PROCESSOR.ID}]'
+              tags:
+                - tag: component
+                  value: eventprocessor
+                - tag: template
+                  value: Graylog-HTTP-API
+              trigger_prototypes:
+                - uuid: e42329105886483fabe26e2c3a136ce6
+                  expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])<1000000'
+                  name: 'Graylog: Event processor [{#PROCESSOR.ID}] has new exceptions'
+                  priority: HIGH
+                  description: 'Alerts when event processor [{#PROCESSOR.ID}] has new exceptions.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+            - uuid: 0dbf0ba402b448109d4b852a23df55d6
+              name: 'Event processor [{#PROCESSOR.ID}]: Executions'
+              type: DEPENDENT
+              key: 'graylog.eventprocessor.executions[{#PROCESSOR.ID}]'
+              delay: '0'
+              description: 'Cumulative executions.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["counters"]["org.graylog.events.processor.aggregation.AggregationEventProcessor.{#PROCESSOR.ID}.execution_count"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.eventprocessor.raw[{#PROCESSOR.ID}]'
+              tags:
+                - tag: component
+                  value: eventprocessor
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: aa64905f2a7a4e51932bbabad2d9637d
+              name: 'Event processor [{#PROCESSOR.ID}]: Execution time p95'
+              type: DEPENDENT
+              key: 'graylog.eventprocessor.execution_time.p95[{#PROCESSOR.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: s
+              description: '95th percentile execution latency.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["timers"]["org.graylog.events.processor.aggregation.AggregationEventProcessor.{#PROCESSOR.ID}.execution_time"]["p95"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.eventprocessor.raw[{#PROCESSOR.ID}]'
+              tags:
+                - tag: component
+                  value: eventprocessor
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 9176cda3b8784a32953de6032af80137
+              name: 'Event processor [{#PROCESSOR.ID}]: Raw metrics payload'
+              type: DEPENDENT
+              key: 'graylog.eventprocessor.raw[{#PROCESSOR.ID}]'
+              delay: '0'
+              history: '0'
+              value_type: TEXT
+              trends: '0'
+              description: 'Raw Graylog metrics payload used as the master item for this discovered event processor.'
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: eventprocessor
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 2de62f3c5e7548468d28b1e5c848ce82
+              name: 'Event processor [{#PROCESSOR.ID}]: Successful'
+              type: DEPENDENT
+              key: 'graylog.eventprocessor.successful[{#PROCESSOR.ID}]'
+              delay: '0'
+              description: 'Cumulative successful executions.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["counters"]["org.graylog.events.processor.aggregation.AggregationEventProcessor.{#PROCESSOR.ID}.execution_successful"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.eventprocessor.raw[{#PROCESSOR.ID}]'
+              tags:
+                - tag: component
+                  value: eventprocessor
+                - tag: template
+                  value: Graylog-HTTP-API
+          master_item:
+            key: graylog.metrics.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var result = [];
+                  var seen = {};
+                  var prefix = 'org.graylog.events.processor.aggregation.AggregationEventProcessor.';
+                  var sections = ['counters', 'gauges', 'meters', 'timers', 'histograms'];
+                  
+                  sections.forEach(function (section) {
+                      Object.keys(d[section] || {}).forEach(function (key) {
+                          if (key.indexOf(prefix) !== 0) return;
+                  
+                          var id = key.substring(prefix.length).split('.')[0];
+                          if (!/^[a-f0-9]{24}$/.test(id) || seen[id] || result.length >= 100) return;
+                  
+                          seen[id] = true;
+                          result.push({'{#PROCESSOR.ID}': id});
+                      });
+                  });
+                  
+                  return JSON.stringify(result);
+        - uuid: feb8ca036c6e45999aafc909af557ca7
+          name: 'Graylog input discovery'
+          type: DEPENDENT
+          key: graylog.input.discovery
+          delay: '0'
+          description: 'Discovers a fixed allowlist of metrics for valid Graylog input IDs. Creates no more than 100 input entities and ignores unknown metric families.'
+          item_prototypes:
+            - uuid: 53f1bf1f004c4735bb76bdd6d68a041c
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Empty messages'
+              type: DEPENDENT
+              key: 'graylog.input.empty.count[{#INPUT.ID}]'
+              delay: '0'
+              description: 'Cumulative empty messages.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["counters"]["{#INPUT.METRIC.PREFIX}.emptyMessages"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+              trigger_prototypes:
+                - uuid: d954204789284b6796b37fa9e19d970c
+                  expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.input.empty.count[{#INPUT.ID}])>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.input.empty.count[{#INPUT.ID}])<1000000'
+                  name: 'Graylog: Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] received empty messages'
+                  priority: WARNING
+                  description: 'Alerts when input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] received empty messages.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+            - uuid: 2ecaee2637144b53ba90738ce7a389a1
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Incoming count'
+              type: DEPENDENT
+              key: 'graylog.input.incoming.count[{#INPUT.ID}]'
+              delay: '0'
+              description: 'Cumulative received messages.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["meters"]["{#INPUT.METRIC.PREFIX}.incomingMessages"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 187b490501a6437a8d736acecb689ca8
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Incoming rate'
+              type: DEPENDENT
+              key: 'graylog.input.incoming.m1rate[{#INPUT.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: msg/s
+              description: 'One-minute received message rate.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["meters"]["{#INPUT.METRIC.PREFIX}.incomingMessages"]["m1_rate"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+              trigger_prototypes:
+                - uuid: e35bd7fa3e884ecaad1434f1f407e82c
+                  expression: 'max(/Template - Graylog Monitoring by HTTP API/graylog.input.incoming.m1rate[{#INPUT.ID}],{$GRAYLOG.INPUT.NODATA.PERIOD})=0'
+                  name: 'Graylog: Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] has no traffic'
+                  status: DISABLED
+                  priority: WARNING
+                  description: 'Enable only for continuously active inputs.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+            - uuid: 6a5611c8690b420891e8f5132704dcfc
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Open connections'
+              type: DEPENDENT
+              key: 'graylog.input.open_connections[{#INPUT.ID}]'
+              delay: '0'
+              description: 'Open connections when exposed by the input.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["gauges"]["{#INPUT.METRIC.PREFIX}.open_connections"]["value"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 8d36ab72f4ef4d0e8e125fd1ced6060b
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Parse time p95'
+              type: DEPENDENT
+              key: 'graylog.input.parse_time.p95[{#INPUT.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: s
+              description: '95th percentile codec parsing time.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["timers"]["{#CODEC.METRIC.PREFIX}.parseTime"]["p95"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: d43ac78b789c4d89af302c79a57dca9e
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Processed rate'
+              type: DEPENDENT
+              key: 'graylog.input.processed.m1rate[{#INPUT.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: msg/s
+              description: 'One-minute codec processing rate.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["meters"]["{#CODEC.METRIC.PREFIX}.processedMessages"]["m1_rate"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 3955bd827194416c84b42527de900f6e
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Raw metrics payload'
+              type: DEPENDENT
+              key: 'graylog.input.raw[{#INPUT.ID}]'
+              delay: '0'
+              history: '0'
+              value_type: TEXT
+              trends: '0'
+              description: 'Raw Graylog metrics payload used as the master item for this discovered input.'
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: cb4036320c2742c799cf411f85d88562
+              name: 'Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}]: Read rate'
+              type: DEPENDENT
+              key: 'graylog.input.read_bytes_1sec[{#INPUT.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: Bps
+              description: 'Current byte receive rate.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["gauges"]["{#INPUT.METRIC.PREFIX}.read_bytes_1sec"]["value"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: 'graylog.input.raw[{#INPUT.ID}]'
+              tags:
+                - tag: component
+                  value: inputs
+                - tag: template
+                  value: Graylog-HTTP-API
+          master_item:
+            key: graylog.metrics.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var result = [];
+                  var seen = {};
+                  var prefix = 'org.graylog2.inputs.';
+                  var validMetrics = {
+                      open_connections: true,
+                      read_bytes_1sec: true,
+                      incomingMessages: true,
+                      emptyMessages: true,
+                      rawSize: true
+                  };
+                  
+                  var sections = ['gauges', 'meters', 'counters', 'timers', 'histograms'];
+                  var keys = [];
+                  sections.forEach(function (section) {
+                      keys = keys.concat(Object.keys(d[section] || {}));
+                  });
+                  
+                  keys.forEach(function (key) {
+                      if (key.indexOf(prefix) !== 0) return;
+                  
+                      var parts = key.substring(prefix.length).split('.');
+                      if (parts.length < 3) return;
+                  
+                      var metric = parts[parts.length - 1];
+                      if (!validMetrics[metric]) return;
+                  
+                      var id = parts[parts.length - 2];
+                      var className = parts[parts.length - 3];
+                      var inputPath = parts.slice(0, parts.length - 2).join('.');
+                      if (!/^[a-f0-9]{24}$/.test(id)) return;
+                      if (!/Input$/.test(className)) return;
+                      var uniqueKey = className + '|' + id;
+                      if (seen[uniqueKey] || result.length >= 100) return;
+                  
+                      var transport = 'Other';
+                      if (inputPath.indexOf('.tcp.') >= 0 || inputPath.slice(-4) === '.tcp') transport = 'TCP';
+                      else if (inputPath.indexOf('.udp.') >= 0 || inputPath.slice(-4) === '.udp') transport = 'UDP';
+                  
+                      var inputType = className.replace(/(?:TCP|UDP)?Input$/, '');
+                      var codecClass;
+                      if (inputType === 'GELF') codecClass = 'GelfCodec';
+                      else if (inputType === 'Syslog') codecClass = 'SyslogCodec';
+                      else if (inputType === 'Raw') codecClass = 'RawCodec';
+                      else codecClass = inputType + 'Codec';
+                  
+                      seen[uniqueKey] = true;
+                      result.push({
+                          '{#INPUT.ID}': id,
+                          '{#INPUT.CLASS}': className,
+                          '{#INPUT.TYPE}': inputType,
+                          '{#INPUT.TRANSPORT}': transport,
+                          '{#INPUT.METRIC.PREFIX}': prefix + inputPath + '.' + id,
+                          '{#CODEC.METRIC.PREFIX}': prefix + 'codecs.' + codecClass + '.' + id
+                      });
+                  });
+                  
+                  return JSON.stringify(result);
+        - uuid: 7a0df27992bd4e259ebd9a95b677d496
+          name: 'Graylog scheduler metric discovery'
+          type: DEPENDENT
+          key: graylog.scheduler.discovery
+          delay: '0'
+          description: 'Discovers only a fixed allowlist of scheduler metrics exposed by the monitored Graylog version. Creates at most seven metric items and supports current JobExecutionEngine metrics and legacy SystemJobManager metrics.'
+          item_prototypes:
+            - uuid: f12f10472edb46cebc68dbcdfcd719db
+              name: 'Scheduler: {#SCHEDULER.NAME}'
+              type: DEPENDENT
+              key: 'graylog.scheduler.metric[{#SCHEDULER.KEY}]'
+              delay: '0'
+              value_type: FLOAT
+              units: '{#SCHEDULER.UNITS}'
+              description: 'Collects the discovered scheduler metric when it is exposed by the monitored Graylog version.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["{#SCHEDULER.SECTION}"]["{#SCHEDULER.METRIC}"]["{#SCHEDULER.FIELD}"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: scheduler
+                - tag: template
+                  value: Graylog-HTTP-API
+          master_item:
+            key: graylog.metrics.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var result = [];
+                  var definitions = [
+                      {id:'failed', section:'counters', metric:'org.graylog.scheduler.JobExecutionEngine.executions.failed', field:'count', name:'Failed executions', key:'executions.failed', kind:'counter', units:''},
+                      {id:'execution_time_p95', section:'timers', metric:'org.graylog.scheduler.JobExecutionEngine.executions.time', field:'p95', name:'Execution time p95', key:'execution_time.p95', kind:'timer', units:'s'},
+                      {id:'free_slots', section:'gauges', metric:'org.graylog.scheduler.worker.JobWorkerPool.free_slots', field:'value', name:'Free slots', key:'free_slots', kind:'gauge', units:''},
+                      {id:'total_slots', section:'gauges', metric:'org.graylog.scheduler.worker.JobWorkerPool.total_slots', field:'value', name:'Total slots', key:'total_slots', kind:'gauge', units:''},
+                      {id:'waiting_slots', section:'gauges', metric:'org.graylog.scheduler.worker.JobWorkerPool.waiting_for_slots', field:'value', name:'Waiting jobs', key:'waiting_slots', kind:'gauge', units:''},
+                      {id:'legacy_running', section:'gauges', metric:'org.graylog2.system.jobs.SystemJobManager.running', field:'value', name:'Legacy running jobs', key:'legacy.running', kind:'gauge', units:''},
+                      {id:'legacy_total', section:'gauges', metric:'org.graylog2.system.jobs.SystemJobManager.total', field:'value', name:'Legacy total jobs', key:'legacy.total', kind:'gauge', units:''}
+                  ];
+                  definitions.forEach(function (x) {
+                      var section = d[x.section] || {};
+                      var metric = section[x.metric];
+                      if (!metric || typeof metric[x.field] === 'undefined') return;
+                      result.push({
+                          '{#SCHEDULER.ID}': x.id,
+                          '{#SCHEDULER.NAME}': x.name,
+                          '{#SCHEDULER.KEY}': x.key,
+                          '{#SCHEDULER.SECTION}': x.section,
+                          '{#SCHEDULER.METRIC}': x.metric,
+                          '{#SCHEDULER.FIELD}': x.field,
+                          '{#SCHEDULER.KIND}': x.kind,
+                          '{#SCHEDULER.UNITS}': x.units
+                      });
+                  });
+                  return JSON.stringify(result);
+        - uuid: ad2c6b1bd5c64deeb6b5cb9d68c01918
+          name: 'Configured Graylog stream discovery'
+          type: DEPENDENT
+          key: graylog.stream.discovery
+          delay: '0'
+          description: 'Discovers only stream IDs listed in {$GRAYLOG.STREAM.IDS} and present in the metrics payload. The macro is empty by default, so this rule creates no items unless explicitly configured. The hard limit is 20 streams.'
+          item_prototypes:
+            - uuid: c49e1289d84741d8bb5dae7e5d713729
+              name: 'Stream [{#STREAM.ID}]: Incoming messages'
+              type: DEPENDENT
+              key: 'graylog.stream.incoming.count[{#STREAM.ID}]'
+              delay: '0'
+              description: 'Cumulative messages received by the configured Graylog stream.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["meters"]["{#STREAM.METRIC}"]["count"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: streams
+                - tag: template
+                  value: Graylog-HTTP-API
+            - uuid: 0074b9e7ba4940d59fcfa1309ddff76a
+              name: 'Stream [{#STREAM.ID}]: Incoming rate'
+              type: DEPENDENT
+              key: 'graylog.stream.incoming.m1rate[{#STREAM.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: msg/s
+              description: 'One-minute message rate for the configured Graylog stream. Use this item to compare load across monitored streams.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["meters"]["{#STREAM.METRIC}"]["m1_rate"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: streams
+                - tag: template
+                  value: Graylog-HTTP-API
+              trigger_prototypes:
+                - uuid: ab1480a0305d4d1a9ef956ee4a292721
+                  expression: 'max(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.NODATA.PERIOD})=0'
+                  name: 'Graylog: Stream [{#STREAM.ID}] has no incoming traffic'
+                  status: DISABLED
+                  priority: WARNING
+                  description: 'Alerts when the configured stream has no incoming traffic during the configured period. Enable only for streams expected to receive messages continuously.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+                - uuid: 487a222385164205bb2903a4d6ff6b3c
+                  expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1-{$GRAYLOG.STREAM.DECREASE.PCT}/100)'
+                  name: 'Graylog: Stream [{#STREAM.ID}] traffic decreased sharply'
+                  priority: WARNING
+                  description: 'Alerts when the short-period stream rate falls below the baseline average by the configured percentage.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+                - uuid: ce0eb859d8954dfaa28752c11b9f8e67
+                  expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1+{$GRAYLOG.STREAM.INCREASE.PCT}/100)'
+                  name: 'Graylog: Stream [{#STREAM.ID}] traffic increased sharply'
+                  priority: WARNING
+                  description: 'Alerts when the short-period stream rate exceeds the baseline average by the configured percentage.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+          master_item:
+            key: graylog.metrics.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var configured = '{$GRAYLOG.STREAM.IDS}'.trim();
+                  if (configured === '') return '[]';
+                  var limit = parseInt('{$GRAYLOG.STREAM.MAX}', 10);
+                  if (!isFinite(limit) || limit < 1) return '[]';
+                  if (limit > 20) limit = 20;
+                  var meters = d.meters || {};
+                  var prefix = 'org.graylog2.plugin.streams.Stream.';
+                  var suffix = '.incomingMessages';
+                  var result = [];
+                  var seen = {};
+                  configured.split(',').forEach(function (entry) {
+                      if (result.length >= limit) return;
+                      var id = entry.trim().toLowerCase();
+                      if (!/^[a-f0-9]{24}$/.test(id) || seen[id]) return;
+                      var metric = prefix + id + suffix;
+                      var data = meters[metric];
+                      if (!data || typeof data.count === 'undefined') return;
+                      seen[id] = true;
+                      result.push({
+                          '{#STREAM.ID}': id,
+                          '{#STREAM.METRIC}': metric
+                      });
+                  });
+                  return JSON.stringify(result);
+        - uuid: c26624b9a75847379c8b3997ed9a8773
+          name: 'Configured Graylog stream rule discovery'
+          type: DEPENDENT
+          key: graylog.stream.rule.discovery
+          delay: '0'
+          description: 'Discovers only stream and rule ID pairs listed in {$GRAYLOG.STREAM.RULES} and present in the metrics payload. The macro is empty by default, so this rule creates no items unless explicitly configured. The hard limit is 20 rules.'
+          item_prototypes:
+            - uuid: 2fb86fc8a6014dbfa9eb6fdb2a4ef609
+              name: 'Stream [{#STREAM.ID}] rule [{#RULE.ID}]: Execution time p95'
+              type: DEPENDENT
+              key: 'graylog.stream.rule.execution_time.p95[{#STREAM.ID},{#RULE.ID}]'
+              delay: '0'
+              value_type: FLOAT
+              units: s
+              description: '95th percentile execution time for the explicitly configured Graylog stream rule.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$["timers"]["{#STREAM.RULE.METRIC}"]["p95"]'
+                  error_handler: DISCARD_VALUE
+              master_item:
+                key: graylog.metrics.raw
+              tags:
+                - tag: component
+                  value: stream-rules
+                - tag: template
+                  value: Graylog-HTTP-API
+              trigger_prototypes:
+                - uuid: 4b73a0e69b414773a7bc2d1f4b3320c3
+                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.stream.rule.execution_time.p95[{#STREAM.ID},{#RULE.ID}],{$GRAYLOG.STREAM.RULE.P95.PERIOD})>{$GRAYLOG.STREAM.RULE.P95.WARN}'
+                  name: 'Graylog: Stream [{#STREAM.ID}] rule [{#RULE.ID}] execution is slow'
+                  priority: WARNING
+                  description: 'Alerts when the stream rule p95 execution time remains above the configured threshold during the configured period.'
+                  tags:
+                    - tag: scope
+                      value: performance
+                    - tag: template
+                      value: Graylog-HTTP-API
+          master_item:
+            key: graylog.metrics.raw
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var d = JSON.parse(value);
+                  var configured = '{$GRAYLOG.STREAM.RULES}'.trim();
+                  if (configured === '') return '[]';
+                  var limit = parseInt('{$GRAYLOG.STREAM.RULE.MAX}', 10);
+                  if (!isFinite(limit) || limit < 1) return '[]';
+                  if (limit > 20) limit = 20;
+                  var timers = d.timers || {};
+                  var result = [];
+                  var seen = {};
+                  configured.split(',').forEach(function (entry) {
+                      if (result.length >= limit) return;
+                      var pair = entry.trim().toLowerCase().split(':');
+                      if (pair.length !== 2) return;
+                      var streamId = pair[0].trim();
+                      var ruleId = pair[1].trim();
+                      if (!/^[a-f0-9]{24}$/.test(streamId) || !/^[a-f0-9]{24}$/.test(ruleId)) return;
+                      var unique = streamId + ':' + ruleId;
+                      if (seen[unique]) return;
+                      var metric = 'org.graylog2.plugin.streams.Stream.' + streamId + '.StreamRule.' + ruleId + '.executionTime';
+                      var data = timers[metric];
+                      if (!data || typeof data.p95 === 'undefined') return;
+                      seen[unique] = true;
+                      result.push({
+                          '{#STREAM.ID}': streamId,
+                          '{#RULE.ID}': ruleId,
+                          '{#STREAM.RULE.METRIC}': metric
+                      });
+                  });
+                  return JSON.stringify(result);
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: graylog
+      macros:
+        - macro: '{$GRAYLOG.API.INTERVAL}'
+          value: 1m
+          description: 'Metrics polling interval.'
+        - macro: '{$GRAYLOG.API.PASSWORD}'
+          description: 'Graylog monitoring user password.'
+        - macro: '{$GRAYLOG.API.PATH}'
+          value: /api/system/metrics
+          description: 'Operational metrics endpoint path.'
+        - macro: '{$GRAYLOG.API.PORT}'
+          value: '9000'
+          description: 'Graylog REST API port.'
+        - macro: '{$GRAYLOG.API.SCHEME}'
+          value: https
+          description: 'REST API protocol: http or https.'
+        - macro: '{$GRAYLOG.API.TIMEOUT}'
+          value: 15s
+          description: 'REST API request timeout.'
+        - macro: '{$GRAYLOG.API.USER}'
+          value: zbx-usr
+          description: 'Graylog user with metrics read permission.'
+        - macro: '{$GRAYLOG.BUFFER.HIGH}'
+          value: '90'
+          description: 'Buffer critical threshold in percent.'
+        - macro: '{$GRAYLOG.BUFFER.WARN}'
+          value: '70'
+          description: 'Buffer warning threshold in percent.'
+        - macro: '{$GRAYLOG.ENDPOINT}'
+          value: localhost
+          description: 'Graylog API address or FQDN.'
+        - macro: '{$GRAYLOG.INDEXER.FAILURE.QUEUE.MAX}'
+          value: '0'
+          description: 'Maximum indexer failure queue size allowed for five minutes.'
+        - macro: '{$GRAYLOG.INDEXER.HEALTH.INTERVAL}'
+          value: 1m
+          description: 'Indexer cluster health polling interval.'
+        - macro: '{$GRAYLOG.INDEXER.HEALTH.PATH}'
+          value: /api/system/indexer/cluster/health
+          description: 'Graylog indexer cluster health endpoint path.'
+        - macro: '{$GRAYLOG.INDEXER.SHARDS.INITIALIZING.MAX}'
+          value: '0'
+          description: 'Maximum initializing indexer shards allowed for ten minutes.'
+        - macro: '{$GRAYLOG.INDEXER.SHARDS.RELOCATING.MAX}'
+          value: '0'
+          description: 'Maximum relocating indexer shards allowed for ten minutes.'
+        - macro: '{$GRAYLOG.INDEXER.SHARDS.UNASSIGNED.MAX}'
+          value: '0'
+          description: 'Maximum unassigned indexer shards allowed for five minutes.'
+        - macro: '{$GRAYLOG.INPUT.NODATA.PERIOD}'
+          value: 10m
+          description: 'No-traffic evaluation period for input trigger prototypes.'
+        - macro: '{$GRAYLOG.JOURNAL.ENTRIES.WARN}'
+          value: '10000'
+          description: 'Warning threshold for journal entries remaining uncommitted for ten minutes.'
+        - macro: '{$GRAYLOG.JOURNAL.HIGH}'
+          value: '85'
+          description: 'Journal critical threshold in percent.'
+        - macro: '{$GRAYLOG.JOURNAL.UNCOMMITTED.WARN}'
+          value: '10000'
+          description: 'Warning threshold for journal messages remaining uncommitted for ten minutes.'
+        - macro: '{$GRAYLOG.JOURNAL.UNFLUSHED.WARN}'
+          value: '1000'
+          description: 'Warning threshold for journal messages awaiting a disk flush for ten minutes.'
+        - macro: '{$GRAYLOG.JOURNAL.WARN}'
+          value: '70'
+          description: 'Journal warning threshold in percent.'
+        - macro: '{$GRAYLOG.JVM.BLOCKED.MAX}'
+          value: '5'
+          description: 'Maximum blocked JVM threads for five minutes.'
+        - macro: '{$GRAYLOG.JVM.HEAP.HIGH}'
+          value: '85'
+          description: 'JVM heap critical threshold in percent.'
+        - macro: '{$GRAYLOG.JVM.HEAP.WARN}'
+          value: '75'
+          description: 'JVM heap warning threshold in percent.'
+        - macro: '{$GRAYLOG.LOG.ERRORS.MAX}'
+          value: '5'
+          description: 'Maximum new ERROR events between samples.'
+        - macro: '{$GRAYLOG.LOG.WARN.MAX}'
+          value: '10'
+          description: 'Maximum new WARN log events allowed between samples.'
+        - macro: '{$GRAYLOG.STREAM.BASELINE.MIN}'
+          value: '1'
+          description: 'Minimum stream baseline rate in messages per second required to evaluate traffic deviation triggers.'
+        - macro: '{$GRAYLOG.STREAM.BASELINE.PERIOD}'
+          value: 1h
+          description: 'Baseline averaging period used by stream traffic deviation triggers.'
+        - macro: '{$GRAYLOG.STREAM.DECREASE.PCT}'
+          value: '80'
+          description: 'Percentage decrease below the stream baseline average that triggers an alert.'
+        - macro: '{$GRAYLOG.STREAM.IDS}'
+          description: 'Comma-separated allowlist of Graylog stream IDs to monitor. Keep empty to disable stream discovery.'
+        - macro: '{$GRAYLOG.STREAM.INCREASE.PCT}'
+          value: '80'
+          description: 'Percentage increase above the stream baseline average that triggers an alert.'
+        - macro: '{$GRAYLOG.STREAM.MAX}'
+          value: '20'
+          description: 'Maximum configured streams accepted by discovery. Values above 20 are limited to 20.'
+        - macro: '{$GRAYLOG.STREAM.NODATA.PERIOD}'
+          value: 10m
+          description: 'Evaluation period for the disabled no-traffic stream trigger.'
+        - macro: '{$GRAYLOG.STREAM.RULE.MAX}'
+          value: '20'
+          description: 'Maximum configured stream rules accepted by discovery. Values above 20 are limited to 20.'
+        - macro: '{$GRAYLOG.STREAM.RULE.P95.PERIOD}'
+          value: 5m
+          description: 'Evaluation period for the stream rule p95 execution time trigger.'
+        - macro: '{$GRAYLOG.STREAM.RULE.P95.WARN}'
+          value: '1'
+          description: 'Warning threshold in seconds for stream rule p95 execution time.'
+        - macro: '{$GRAYLOG.STREAM.RULES}'
+          description: 'Comma-separated allowlist of stream_id:rule_id pairs to monitor. Keep empty to disable stream rule discovery.'
+        - macro: '{$GRAYLOG.STREAM.SHORT.PERIOD}'
+          value: 5m
+          description: 'Short averaging period used by stream traffic deviation triggers.'
+        - macro: '{$GRAYLOG.TCP.PORT}'
+          value: '9000'
+          description: 'TCP port used by the availability check.'
+        - macro: '{$GRAYLOG.TRAFFIC.BASELINE.MIN}'
+          value: '1024'
+          description: 'Minimum baseline traffic rate in bytes per second required to evaluate traffic deviation triggers.'
+        - macro: '{$GRAYLOG.TRAFFIC.BASELINE.PERIOD}'
+          value: 1h
+          description: 'Baseline averaging period used by traffic deviation triggers.'
+        - macro: '{$GRAYLOG.TRAFFIC.DECREASE.PCT}'
+          value: '80'
+          description: 'Percentage decrease below the baseline average that triggers an alert.'
+        - macro: '{$GRAYLOG.TRAFFIC.INCREASE.PCT}'
+          value: '80'
+          description: 'Percentage increase above the baseline average that triggers an alert.'
+        - macro: '{$GRAYLOG.TRAFFIC.SHORT.PERIOD}'
+          value: 5m
+          description: 'Short averaging period used by traffic deviation triggers.'
