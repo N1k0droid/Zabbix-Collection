@@ -1,5 +1,7 @@
 # Juniper MX204 LED Status Discovery Template for Zabbix 7.0
 
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
+
 ## Overview
 
 This Zabbix 7.0 template provides comprehensive LED monitoring for Juniper MX204 routers via SNMP.
