@@ -1,5 +1,7 @@
 # SMB Shares Monitoring – Zabbix Template
 
+[![Collection](https://img.shields.io/badge/N1k0droid-Zabbix--Collection-blue?logo=github)](https://github.com/N1k0droid/Zabbix-Collection)
+
 Zabbix template for discovering and monitoring disk usage on SMB shares (Total, Used, Free, Free %, Used %).
 
 ---
