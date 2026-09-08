@@ -5,8 +5,8 @@ zabbix_export:
       name: Templates/Applications
   templates:
     - uuid: 29169d4f84ab4b158a13ebc72e5f4848
-      template: 'Template - Graylog Monitoring by HTTP API'
-      name: 'Template - Graylog Monitoring by HTTP API'
+      template: 'Template - Graylog Monitoring by REST API'
+      name: 'Template - Graylog Monitoring by REST API'
       description: |
         Monitors Graylog through a single HTTP API request to the system metrics endpoint. The template collects application, buffer, journal, JVM, multi-version scheduler discovery, throughput, logging, indexing, pipeline, and processing metrics. Low-level discovery detects Graylog inputs, aggregation event processors, and a fixed allowlist of scheduler metrics. Input and event processor discovery rules are capped at 100 entities each. Scheduler discovery creates at most seven metric items. No discovery enumerates arbitrary API metric names. Optional stream and stream rule discovery rules are disabled by empty allowlist macros and are hard-limited to 20 configured entities each.
         
@@ -53,7 +53,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: c65936ca0feb441c826d74fb8b5e7f35
-              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.api.status)=0'
+              expression: 'last(/Template - Graylog Monitoring by REST API/graylog.api.status)=0'
               name: 'Graylog: API metrics payload is invalid'
               priority: HIGH
               description: 'Alerts when the Graylog metrics API returns an empty, HTML, invalid, or unexpected payload.'
@@ -83,7 +83,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 403d4582038e4e5ab74c28ce2ae5c61e
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               name: 'Graylog: input buffer utilization is critical'
               priority: HIGH
               description: 'Alerts when input buffer utilization is critical.'
@@ -93,13 +93,13 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 7c1628ffbd394243b2f73e7bf3388d8c
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.input.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
               name: 'Graylog: input buffer utilization is high'
               priority: WARNING
               description: 'Alerts when input buffer utilization is high.'
               dependencies:
                 - name: 'Graylog: input buffer utilization is critical'
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.input.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               tags:
                 - tag: scope
                   value: performance
@@ -126,7 +126,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 8f280939f03646e7b54e390874d738b3
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               name: 'Graylog: output buffer utilization is critical'
               priority: HIGH
               description: 'Alerts when output buffer utilization is critical.'
@@ -136,13 +136,13 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 8b661d5d77b041f0a71b78e6349da1d1
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.output.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
               name: 'Graylog: output buffer utilization is high'
               priority: WARNING
               description: 'Alerts when output buffer utilization is high.'
               dependencies:
                 - name: 'Graylog: output buffer utilization is critical'
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.output.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               tags:
                 - tag: scope
                   value: performance
@@ -169,7 +169,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 1d8a28d703c04671bbd2e7a6b0445c93
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               name: 'Graylog: process buffer utilization is critical'
               priority: HIGH
               description: 'Alerts when process buffer utilization is critical.'
@@ -179,13 +179,13 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 0ddaaca391a8499bafe0dadc8985f1ef
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.process.utilization,10m)>{$GRAYLOG.BUFFER.WARN}'
               name: 'Graylog: process buffer utilization is high'
               priority: WARNING
               description: 'Alerts when process buffer utilization is high.'
               dependencies:
                 - name: 'Graylog: process buffer utilization is critical'
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.buffer.process.utilization,5m)>{$GRAYLOG.BUFFER.HIGH}'
               tags:
                 - tag: scope
                   value: performance
@@ -211,7 +211,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: ba817a6f5bf3446bacd0d6ad10874f02
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.failures)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.failures)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.elasticsearch.failures)>0 and change(/Template - Graylog Monitoring by REST API/graylog.elasticsearch.failures)<1000000'
               name: 'Graylog: New elasticsearch output failures'
               priority: HIGH
               description: 'Alerts when new elasticsearch output failures.'
@@ -256,7 +256,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 2a74b89249b44d37ae81fa7328e36f8a
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.flush_failures)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.elasticsearch.flush_failures)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.elasticsearch.flush_failures)>0 and change(/Template - Graylog Monitoring by REST API/graylog.elasticsearch.flush_failures)<1000000'
               name: 'Graylog: New indexer buffer flush failures'
               priority: HIGH
               description: 'Alerts when the indexer reports new buffer flush failures.'
@@ -323,7 +323,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 53074bd90f094a30a63cb879e688d81d
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.gelf.chunks.expired_messages)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.gelf.chunks.expired_messages)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.gelf.chunks.expired_messages)>0 and change(/Template - Graylog Monitoring by REST API/graylog.gelf.chunks.expired_messages)<1000000'
               name: 'Graylog: New gelf expired messages'
               priority: WARNING
               description: 'Alerts when new gelf expired messages.'
@@ -352,7 +352,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 3689dba1cd6747fb8b824f06ed2f7d16
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.failures.queue,5m)>{$GRAYLOG.INDEXER.FAILURE.QUEUE.MAX}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.indexer.failures.queue,5m)>{$GRAYLOG.INDEXER.FAILURE.QUEUE.MAX}'
               name: 'Graylog: Indexer failure queue is not empty'
               priority: HIGH
               description: 'Alerts when the indexer failure queue remains above the configured threshold for five minutes.'
@@ -408,7 +408,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 5338fce0a3ef404fbfbe2ee722ebb7ab
-              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=-1'
+              expression: 'last(/Template - Graylog Monitoring by REST API/graylog.indexer.health.status)=-1'
               name: 'Graylog: Indexer cluster health cannot be retrieved'
               priority: HIGH
               description: 'Alerts when the indexer health payload is unavailable or invalid.'
@@ -418,7 +418,7 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 26d20cf0b61a4199b170587978c38813
-              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=0'
+              expression: 'last(/Template - Graylog Monitoring by REST API/graylog.indexer.health.status)=0'
               name: 'Graylog: Indexer cluster health is red'
               priority: HIGH
               description: 'Alerts when the indexer cluster reports red health.'
@@ -428,7 +428,7 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 41937f975de249199ac1f970025fca85
-              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.indexer.health.status)=1'
+              expression: 'last(/Template - Graylog Monitoring by REST API/graylog.indexer.health.status)=1'
               name: 'Graylog: Indexer cluster health is yellow'
               priority: WARNING
               description: 'Alerts when the indexer cluster reports yellow health.'
@@ -475,7 +475,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: cd54e701896f4913ad0d8deec8aec5f3
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.initializing,10m)>{$GRAYLOG.INDEXER.SHARDS.INITIALIZING.MAX}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.indexer.shards.initializing,10m)>{$GRAYLOG.INDEXER.SHARDS.INITIALIZING.MAX}'
               name: 'Graylog: Indexer cluster has initializing shards'
               priority: WARNING
               description: 'Alerts when initializing indexer shards remain above the configured threshold for ten minutes.'
@@ -504,7 +504,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 6fcc9502dc8f402daf14fe8cfae423c7
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.relocating,10m)>{$GRAYLOG.INDEXER.SHARDS.RELOCATING.MAX}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.indexer.shards.relocating,10m)>{$GRAYLOG.INDEXER.SHARDS.RELOCATING.MAX}'
               name: 'Graylog: Indexer cluster has relocating shards'
               priority: WARNING
               description: 'Alerts when relocating indexer shards remain above the configured threshold for ten minutes.'
@@ -533,7 +533,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: cf707e1bfa6342fc979a6a7048167c5b
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.indexer.shards.unassigned,5m)>{$GRAYLOG.INDEXER.SHARDS.UNASSIGNED.MAX}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.indexer.shards.unassigned,5m)>{$GRAYLOG.INDEXER.SHARDS.UNASSIGNED.MAX}'
               name: 'Graylog: Indexer cluster has unassigned shards'
               priority: HIGH
               description: 'Alerts when unassigned indexer shards remain above the configured threshold for five minutes.'
@@ -582,7 +582,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 43f5d724c8554cfaa9a772db5cbca274
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.journal.discarded)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.journal.discarded)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.journal.discarded)>0 and change(/Template - Graylog Monitoring by REST API/graylog.journal.discarded)<1000000'
               name: 'Graylog: Messages discarded by journal'
               priority: HIGH
               description: 'Alerts when messages discarded by journal.'
@@ -611,7 +611,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: cbcd37db0f59424c9c5b15a9b1505293
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.entries_uncommitted,10m)>{$GRAYLOG.JOURNAL.ENTRIES.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.entries_uncommitted,10m)>{$GRAYLOG.JOURNAL.ENTRIES.WARN}'
               name: 'Graylog: Journal backlog is high'
               priority: WARNING
               description: 'Alerts when uncommitted journal entries remain above the configured threshold for ten minutes.'
@@ -660,7 +660,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 8cfe96b267e240759606b887eff24cf9
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.uncommitted_messages,10m)>{$GRAYLOG.JOURNAL.UNCOMMITTED.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.uncommitted_messages,10m)>{$GRAYLOG.JOURNAL.UNCOMMITTED.WARN}'
               name: 'Graylog: Journal has many uncommitted messages'
               priority: WARNING
               description: 'Alerts when uncommitted journal messages remain above the configured threshold for ten minutes.'
@@ -689,7 +689,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 7eb45f338d754b5fbf8329789233c8c3
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.unflushed,10m)>{$GRAYLOG.JOURNAL.UNFLUSHED.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.unflushed,10m)>{$GRAYLOG.JOURNAL.UNFLUSHED.WARN}'
               name: 'Graylog: Journal has many unflushed messages'
               priority: WARNING
               description: 'Alerts when journal messages awaiting a disk flush remain above the configured threshold for ten minutes.'
@@ -723,7 +723,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: de2af98f3eba49f0bd90994a0503a606
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
               name: 'Graylog: journal utilization is critical'
               priority: HIGH
               description: 'Alerts when journal utilization is critical.'
@@ -733,13 +733,13 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: 872b7194ea8a421b8285f72101c8b40e
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,10m)>{$GRAYLOG.JOURNAL.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.utilization,10m)>{$GRAYLOG.JOURNAL.WARN}'
               name: 'Graylog: journal utilization is high'
               priority: WARNING
               description: 'Alerts when journal utilization is high.'
               dependencies:
                 - name: 'Graylog: journal utilization is critical'
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.journal.utilization,5m)>{$GRAYLOG.JOURNAL.HIGH}'
               tags:
                 - tag: scope
                   value: performance
@@ -828,7 +828,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: d2f3f417ce9e4fa48f03fd60bca46847
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
               name: 'Graylog: jvm heap usage is critical'
               priority: HIGH
               description: 'Alerts when jvm heap usage is critical.'
@@ -838,13 +838,13 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: fd7083c42491420da3c24efc7879135d
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,10m)>{$GRAYLOG.JVM.HEAP.WARN}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.jvm.heap.usage,10m)>{$GRAYLOG.JVM.HEAP.WARN}'
               name: 'Graylog: jvm heap usage is high'
               priority: WARNING
               description: 'Alerts when jvm heap usage is high.'
               dependencies:
                 - name: 'Graylog: jvm heap usage is critical'
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.jvm.heap.usage,5m)>{$GRAYLOG.JVM.HEAP.HIGH}'
               tags:
                 - tag: scope
                   value: performance
@@ -889,7 +889,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 9a700b37d97d4f9ebf3d6c4007c263f1
-              expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.jvm.threads.blocked,5m)>{$GRAYLOG.JVM.BLOCKED.MAX}'
+              expression: 'min(/Template - Graylog Monitoring by REST API/graylog.jvm.threads.blocked,5m)>{$GRAYLOG.JVM.BLOCKED.MAX}'
               name: 'Graylog: JVM blocked thread count is high'
               priority: WARNING
               description: 'Alerts when jVM blocked thread count is high.'
@@ -936,7 +936,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: b914a913067b4f06909c3f98c74b291c
-              expression: 'last(/Template - Graylog Monitoring by HTTP API/graylog.jvm.threads.deadlocked)>0'
+              expression: 'last(/Template - Graylog Monitoring by REST API/graylog.jvm.threads.deadlocked)>0'
               name: 'Graylog: JVM deadlock detected'
               priority: DISASTER
               description: 'Alerts when jVM deadlock detected.'
@@ -1001,7 +1001,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 4cea584e945d47fc981cba9e99215021
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.errors)>{$GRAYLOG.LOG.ERRORS.MAX} and change(/Template - Graylog Monitoring by HTTP API/graylog.log.errors)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.log.errors)>{$GRAYLOG.LOG.ERRORS.MAX} and change(/Template - Graylog Monitoring by REST API/graylog.log.errors)<1000000'
               name: 'Graylog: Multiple new application errors'
               priority: WARNING
               description: 'Alerts when multiple new application errors.'
@@ -1030,7 +1030,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 1e13f8f87ed64449bdee81fd6f54e0e5
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.fatal)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.log.fatal)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.log.fatal)>0 and change(/Template - Graylog Monitoring by REST API/graylog.log.fatal)<1000000'
               name: 'Graylog: New fatal application events'
               priority: HIGH
               description: 'Alerts when new fatal application events.'
@@ -1077,7 +1077,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 5cd7324938cf47c7b77fb95f04907b1c
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.log.warn)>{$GRAYLOG.LOG.WARN.MAX} and change(/Template - Graylog Monitoring by HTTP API/graylog.log.warn)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.log.warn)>{$GRAYLOG.LOG.WARN.MAX} and change(/Template - Graylog Monitoring by REST API/graylog.log.warn)<1000000'
               name: 'Graylog: Multiple new application warnings'
               priority: WARNING
               description: 'Alerts when new WARN log events between samples exceed the configured threshold.'
@@ -1164,7 +1164,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 2ab070d218c84824b06e1a5771bc5daf
-              expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.processing.invalid_timestamps)>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.processing.invalid_timestamps)<1000000'
+              expression: 'change(/Template - Graylog Monitoring by REST API/graylog.processing.invalid_timestamps)>0 and change(/Template - Graylog Monitoring by REST API/graylog.processing.invalid_timestamps)<1000000'
               name: 'Graylog: New invalid timestamps'
               priority: WARNING
               description: 'Alerts when new invalid timestamps.'
@@ -1278,7 +1278,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 45a6d192da03425486314f6043d5ff69
-              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
+              expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
               name: 'Graylog: input traffic decreased sharply'
               priority: WARNING
               description: 'Alerts when the short-period average input traffic rate falls below the baseline average by the configured decrease percentage.'
@@ -1288,7 +1288,7 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: f2ee7d87843244f6a905d30d9cd62768
-              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
+              expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by REST API/graylog.traffic.input.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
               name: 'Graylog: input traffic increased sharply'
               priority: WARNING
               description: 'Alerts when the short-period average input traffic rate exceeds the baseline average by the configured increase percentage.'
@@ -1322,7 +1322,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 8bc368e009e34f1abc84a2ee3245a15f
-              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
+              expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1-{$GRAYLOG.TRAFFIC.DECREASE.PCT}/100)'
               name: 'Graylog: output traffic decreased sharply'
               priority: WARNING
               description: 'Alerts when the short-period average output traffic rate falls below the baseline average by the configured decrease percentage.'
@@ -1332,7 +1332,7 @@ zabbix_export:
                 - tag: template
                   value: Graylog-HTTP-API
             - uuid: dfc79026a38c425db9a2fc81a675898f
-              expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
+              expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})>{$GRAYLOG.TRAFFIC.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by REST API/graylog.traffic.output.rate,{$GRAYLOG.TRAFFIC.BASELINE.PERIOD})*(1+{$GRAYLOG.TRAFFIC.INCREASE.PCT}/100)'
               name: 'Graylog: output traffic increased sharply'
               priority: WARNING
               description: 'Alerts when the short-period average output traffic rate exceeds the baseline average by the configured increase percentage.'
@@ -1355,7 +1355,7 @@ zabbix_export:
               value: Graylog-HTTP-API
           triggers:
             - uuid: 979d8ba8654e495f87a02a78041b44a3
-              expression: 'max(/Template - Graylog Monitoring by HTTP API/net.tcp.service[tcp,{HOST.CONN},{$GRAYLOG.TCP.PORT}],3m)=0'
+              expression: 'max(/Template - Graylog Monitoring by REST API/net.tcp.service[tcp,{HOST.CONN},{$GRAYLOG.TCP.PORT}],3m)=0'
               name: 'Graylog: Service is unavailable on port {$GRAYLOG.TCP.PORT}'
               priority: HIGH
               description: 'Alerts when service is unavailable on port {$GRAYLOG.TCP.PORT}.'
@@ -1392,7 +1392,7 @@ zabbix_export:
                   value: Graylog-HTTP-API
               trigger_prototypes:
                 - uuid: e42329105886483fabe26e2c3a136ce6
-                  expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])<1000000'
+                  expression: 'change(/Template - Graylog Monitoring by REST API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])>0 and change(/Template - Graylog Monitoring by REST API/graylog.eventprocessor.exceptions[{#PROCESSOR.ID}])<1000000'
                   name: 'Graylog: Event processor [{#PROCESSOR.ID}] has new exceptions'
                   priority: HIGH
                   description: 'Alerts when event processor [{#PROCESSOR.ID}] has new exceptions.'
@@ -1525,7 +1525,7 @@ zabbix_export:
                   value: Graylog-HTTP-API
               trigger_prototypes:
                 - uuid: d954204789284b6796b37fa9e19d970c
-                  expression: 'change(/Template - Graylog Monitoring by HTTP API/graylog.input.empty.count[{#INPUT.ID}])>0 and change(/Template - Graylog Monitoring by HTTP API/graylog.input.empty.count[{#INPUT.ID}])<1000000'
+                  expression: 'change(/Template - Graylog Monitoring by REST API/graylog.input.empty.count[{#INPUT.ID}])>0 and change(/Template - Graylog Monitoring by REST API/graylog.input.empty.count[{#INPUT.ID}])<1000000'
                   name: 'Graylog: Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] received empty messages'
                   priority: WARNING
                   description: 'Alerts when input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] received empty messages.'
@@ -1574,7 +1574,7 @@ zabbix_export:
                   value: Graylog-HTTP-API
               trigger_prototypes:
                 - uuid: e35bd7fa3e884ecaad1434f1f407e82c
-                  expression: 'max(/Template - Graylog Monitoring by HTTP API/graylog.input.incoming.m1rate[{#INPUT.ID}],{$GRAYLOG.INPUT.NODATA.PERIOD})=0'
+                  expression: 'max(/Template - Graylog Monitoring by REST API/graylog.input.incoming.m1rate[{#INPUT.ID}],{$GRAYLOG.INPUT.NODATA.PERIOD})=0'
                   name: 'Graylog: Input [{#INPUT.TYPE} {#INPUT.TRANSPORT} {#INPUT.ID}] has no traffic'
                   status: DISABLED
                   priority: WARNING
@@ -1849,7 +1849,7 @@ zabbix_export:
                   value: Graylog-HTTP-API
               trigger_prototypes:
                 - uuid: ab1480a0305d4d1a9ef956ee4a292721
-                  expression: 'max(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.NODATA.PERIOD})=0'
+                  expression: 'max(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.NODATA.PERIOD})=0'
                   name: 'Graylog: Stream [{#STREAM.ID}] has no incoming traffic'
                   status: DISABLED
                   priority: WARNING
@@ -1860,7 +1860,7 @@ zabbix_export:
                     - tag: template
                       value: Graylog-HTTP-API
                 - uuid: 487a222385164205bb2903a4d6ff6b3c
-                  expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1-{$GRAYLOG.STREAM.DECREASE.PCT}/100)'
+                  expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})<avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1-{$GRAYLOG.STREAM.DECREASE.PCT}/100)'
                   name: 'Graylog: Stream [{#STREAM.ID}] traffic decreased sharply'
                   priority: WARNING
                   description: 'Alerts when the short-period stream rate falls below the baseline average by the configured percentage.'
@@ -1870,7 +1870,7 @@ zabbix_export:
                     - tag: template
                       value: Graylog-HTTP-API
                 - uuid: ce0eb859d8954dfaa28752c11b9f8e67
-                  expression: 'avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by HTTP API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1+{$GRAYLOG.STREAM.INCREASE.PCT}/100)'
+                  expression: 'avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})>{$GRAYLOG.STREAM.BASELINE.MIN} and avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.SHORT.PERIOD})>avg(/Template - Graylog Monitoring by REST API/graylog.stream.incoming.m1rate[{#STREAM.ID}],{$GRAYLOG.STREAM.BASELINE.PERIOD})*(1+{$GRAYLOG.STREAM.INCREASE.PCT}/100)'
                   name: 'Graylog: Stream [{#STREAM.ID}] traffic increased sharply'
                   priority: WARNING
                   description: 'Alerts when the short-period stream rate exceeds the baseline average by the configured percentage.'
@@ -1939,7 +1939,7 @@ zabbix_export:
                   value: Graylog-HTTP-API
               trigger_prototypes:
                 - uuid: 4b73a0e69b414773a7bc2d1f4b3320c3
-                  expression: 'min(/Template - Graylog Monitoring by HTTP API/graylog.stream.rule.execution_time.p95[{#STREAM.ID},{#RULE.ID}],{$GRAYLOG.STREAM.RULE.P95.PERIOD})>{$GRAYLOG.STREAM.RULE.P95.WARN}'
+                  expression: 'min(/Template - Graylog Monitoring by REST API/graylog.stream.rule.execution_time.p95[{#STREAM.ID},{#RULE.ID}],{$GRAYLOG.STREAM.RULE.P95.PERIOD})>{$GRAYLOG.STREAM.RULE.P95.WARN}'
                   name: 'Graylog: Stream [{#STREAM.ID}] rule [{#RULE.ID}] execution is slow'
                   priority: WARNING
                   description: 'Alerts when the stream rule p95 execution time remains above the configured threshold during the configured period.'
