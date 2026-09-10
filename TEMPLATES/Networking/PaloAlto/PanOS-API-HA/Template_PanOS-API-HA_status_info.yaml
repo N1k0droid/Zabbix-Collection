@@ -105,7 +105,7 @@ zabbix_export:
               value: API-HA
           triggers:
             - uuid: 186fe1f4814b47db85d9bf958ae902f4
-              expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.running_sync,,"like","synchronized")=0'
+              expression: 'find(/Template - PanOS-API - HA Sync Status/panos.ha.running_sync,,"regexp","^synchronized$")=0'
               name: 'PAN-OS HA: Running configuration NOT synchronized'
               priority: HIGH
               description: 'Running Configuration is not synchronized between HA peers (equivalent to CLI: show high-availability all | match "Running Configuration:")'
